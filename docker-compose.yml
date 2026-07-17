@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Cache & Ephemeral Short-Term AI Memory
+  redis:
+    image: redis:7-alpine
+    container_name: brain-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Asynchronous Event Bus (NATS JetStream)
+  nats:
+    image: nats:2.10-alpine
+    container_name: brain-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222" # Monitoring port
+    command: "-js -m 8222" # Enable JetStream and monitoring console
+    volumes:
+      - nats_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "4222"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Temporal Web (UI dashboard)
+  temporal-web:
+    image: temporalio/ui:2.24.0
+    container_name: brain-temporal-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8080
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+  # Temporal Dev Server (Lightweight Server for Local Development)
+  temporal:
+    image: temporalio/admin-tools:1.23.0
+    container_name: brain-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    entrypoint: [ "temporal", "server", "start-dev", "--ip", "0.0.0.0" ]
+    volumes:
+      - temporal_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7233"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis_data:
+  nats_data:
+  temporal_data:
