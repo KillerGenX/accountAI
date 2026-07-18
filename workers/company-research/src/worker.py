@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import asyncio
 import os
 import sys
@@ -27,8 +28,8 @@ logger = structlog.get_logger()
 from src.workflows import (
     CompanyResearchWorkflow,
     DailyAccountMonitoringWorkflow,
-)  # noqa: E402
-from src.activities import (  # noqa: E402
+)
+from src.activities import (
     research_company_profile,
     update_account_in_db,
     detect_buying_signals,
