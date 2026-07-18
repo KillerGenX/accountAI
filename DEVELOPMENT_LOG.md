@@ -6,12 +6,23 @@ This document tracks all completed features, configuration updates, and verifica
 
 ## 🎯 Current Focus & Work in Progress
 
-- **Current Milestone:** Phase 8 - Authentication & JWT Access Control
-- **Objective:** Implement JWT authentication middleware in FastAPI and restrict API endpoints access using RBAC (Role-Based Access Control) policies.
+- **Current Milestone:** Phase 9 - Real AI Research Integration (LiteLLM)
+- **Objective:** Integrate LiteLLM and a search API (Tavily/Perplexity) into the company research worker to replace mock AI summaries with real scraped company intelligence.
 - **Active Files:**
-  - `services/api-gateway/src/core/auth.py`
-  - `services/api-gateway/src/api/v1/accounts.py`
-- **Last Action Completed:** Successfully completed and tested E2E Semantic Vector Search (Phase 7) using Google Vertex AI `text-embedding-004` (768-dimensional with zero-padding to 1536) and PostgreSQL `pgvector` operator (`<=>`).
+  - `workers/company-research/src/activities.py`
+- **Last Action Completed:** Successfully implemented and tested E2E JWT Authentication & Access Control (Phase 8) using Supabase Auth endpoints and Redis session caching.
+
+---
+
+## 📅 [2026-07-18] - Phase 8: JWT Authentication & Access Control (100% Completed)
+
+### 📦 1. Completed Tasks (Oauth2 Security & Caching)
+- **FastAPI HTTPBearer Auth:** Created [auth.py](file:///d:/Teguh/ES/Account/services/api-gateway/src/core/auth.py) implementing centralized JWT extraction.
+- **Supabase API Verification:** Configured token verification by calling Supabase's `GET /auth/v1/user` REST endpoint dynamically, resolving credentials in real-time.
+- **Redis Session Cache:** Cached validated user profiles in Redis for 300 seconds using SHA-256 hashes of the JWT tokens to keep latency under 2ms.
+- **Tenant Isolation Enforcement:** Secured all endpoints under `accounts.py`, `workspaces.py`, and `search.py` by removing manual `workspace_id` inputs and forcing queries to resolve against the authenticated user's database `workspace_id`.
+- **Role-Based Access Control:** Added a custom `RoleChecker` decorator to limit workspace user invitation endpoints to `administrator` role.
+- **Mock Token for Testing:** Added a development-only mock token bypass (`mock-token-teguh`) to facilitate unit and E2E testing without external dependency friction.
 
 ---
 
@@ -110,6 +121,8 @@ This document tracks all completed features, configuration updates, and verifica
 | **Temporal UI** | Browser `http://localhost:8080` | Displays Temporal workflows dashboard (Status: Registered) | **[PASS]** |
 | **Embedding Generation** | Script `test_vertex_ai.py` | Google Vertex AI oauth2 token exchange and 768 dim vector with padding to 1536 | **[PASS]** |
 | **Semantic Vector Search** | Script `test_search_e2e.py` | pgvector cosine distance calculation finds correct account based on private notes | **[PASS]** |
+| **JWT Authentication** | Script `test_auth.py` | FastAPI endpoint protection, auth checks, and workspace/role isolation | **[PASS]** |
+| **Redis Session Caching** | Script `test_auth.py` | Cache hit verifies tokens instantly under 2ms using Redis session key | **[PASS]** |
 
 ---
 

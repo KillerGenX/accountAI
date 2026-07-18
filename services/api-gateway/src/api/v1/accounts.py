@@ -15,6 +15,7 @@ from src.domains.account.models import (
 )
 from src.domains.account.embeddings import embedding_client
 from src.domains.system.models import WorkspaceModel, UserModel
+from src.core.auth import get_current_user, require_role
 from src.domains.account.schemas import (
     AccountCreate,
     AccountResponse,
@@ -29,7 +30,11 @@ router = APIRouter(tags=["Accounts"])
 
 
 @router.post("/", response_model=AccountResponse, status_code=status.HTTP_201_CREATED)
-async def create_account(account_in: AccountCreate, db: AsyncSession = Depends(get_db)):
+async def create_account(
+    account_in: AccountCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["administrator", "account_manager"])),
+):
     """
     Registers a new corporate account manually under a specific workspace.
     """
@@ -38,6 +43,13 @@ async def create_account(account_in: AccountCreate, db: AsyncSession = Depends(g
         name=account_in.company_name,
         workspace_id=str(account_in.workspace_id),
     )
+
+    # Verify tenant isolation
+    if str(account_in.workspace_id) != current_user["workspace_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot register an account outside your workspace",
+        )
 
     # 1. Verify workspace exists
     ws_result = await db.execute(
@@ -124,17 +136,16 @@ async def create_account(account_in: AccountCreate, db: AsyncSession = Depends(g
 
 @router.get("/", response_model=List[AccountResponse])
 async def list_accounts(
-    workspace_id: UUID = Query(
-        ..., description="Filter accounts by Workspace UUID (mandatory)"
-    ),
     assigned_to: Optional[UUID] = Query(
         None, description="Filter accounts by assigned AM UUID"
     ),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Lists accounts under a workspace, optionally filtered by assigned Account Manager.
     """
+    workspace_id = UUID(current_user["workspace_id"])
     stmt = select(AccountModel).where(
         AccountModel.workspace_id == workspace_id, AccountModel.deleted_at.is_(None)
     )
@@ -147,38 +158,51 @@ async def list_accounts(
 
 
 @router.get("/{account_id}", response_model=AccountResponse)
-async def get_account(account_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_account(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     """
     Fetches details of a specific corporate account by ID.
     """
     result = await db.execute(
         select(AccountModel).where(
-            AccountModel.id == account_id, AccountModel.deleted_at.is_(None)
+            AccountModel.id == account_id,
+            AccountModel.workspace_id == UUID(current_user["workspace_id"]),
+            AccountModel.deleted_at.is_(None),
         )
     )
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Account with ID {account_id} not found",
+            detail=f"Account with ID {account_id} not found in your workspace",
         )
     return account
 
 
 @router.get("/{account_id}/contacts", response_model=List[ContactResponse])
-async def list_account_contacts(account_id: UUID, db: AsyncSession = Depends(get_db)):
+async def list_account_contacts(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     """
     Lists contacts mapped to a specific corporate account.
     """
-    # Verify account exists
+    # Verify account exists and belongs to the workspace
     acc_res = await db.execute(
         select(AccountModel).where(
-            AccountModel.id == account_id, AccountModel.deleted_at.is_(None)
+            AccountModel.id == account_id,
+            AccountModel.workspace_id == UUID(current_user["workspace_id"]),
+            AccountModel.deleted_at.is_(None),
         )
     )
     if not acc_res.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found in your workspace",
         )
 
     result = await db.execute(
@@ -195,7 +219,10 @@ async def list_account_contacts(account_id: UUID, db: AsyncSession = Depends(get
     status_code=status.HTTP_201_CREATED,
 )
 async def add_account_contact(
-    account_id: UUID, contact_in: ContactCreate, db: AsyncSession = Depends(get_db)
+    account_id: UUID,
+    contact_in: ContactCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["administrator", "account_manager"])),
 ):
     """
     Adds a new contact to a corporate account manually.
@@ -203,13 +230,16 @@ async def add_account_contact(
     # 1. Fetch account to extract workspace_id and check existence
     acc_res = await db.execute(
         select(AccountModel).where(
-            AccountModel.id == account_id, AccountModel.deleted_at.is_(None)
+            AccountModel.id == account_id,
+            AccountModel.workspace_id == UUID(current_user["workspace_id"]),
+            AccountModel.deleted_at.is_(None),
         )
     )
     account = acc_res.scalar_one_or_none()
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found in your workspace",
         )
 
     # 2. Add contact record
@@ -259,10 +289,8 @@ async def add_account_contact(
 @router.get("/{account_id}/notes", response_model=List[NoteResponse])
 async def list_account_notes(
     account_id: UUID,
-    user_id: UUID = Query(
-        ..., description="Owner User ID of the private notes (only own notes returned)"
-    ),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Retrieves private notes for an account. Stored notes are private to the AM who authored them.
@@ -270,7 +298,7 @@ async def list_account_notes(
     result = await db.execute(
         select(AccountNoteModel).where(
             AccountNoteModel.account_id == account_id,
-            AccountNoteModel.user_id == user_id,
+            AccountNoteModel.user_id == UUID(current_user["id"]),
             AccountNoteModel.deleted_at.is_(None),
         )
     )
@@ -283,7 +311,10 @@ async def list_account_notes(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_account_note(
-    account_id: UUID, note_in: NoteCreate, db: AsyncSession = Depends(get_db)
+    account_id: UUID,
+    note_in: NoteCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Adds a private personal note for an account (accessible only by the author).
@@ -291,16 +322,25 @@ async def add_account_note(
     # 1. Fetch account to check existence and extract workspace_id
     acc_res = await db.execute(
         select(AccountModel).where(
-            AccountModel.id == account_id, AccountModel.deleted_at.is_(None)
+            AccountModel.id == account_id,
+            AccountModel.workspace_id == UUID(current_user["workspace_id"]),
+            AccountModel.deleted_at.is_(None),
         )
     )
     account = acc_res.scalar_one_or_none()
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found in your workspace",
         )
 
-    # 2. Verify user exists and belongs to the same workspace
+    # 2. Verify note author matches the authenticated user
+    if str(note_in.user_id) != current_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot write a note on behalf of another user",
+        )
+
     user_res = await db.execute(
         select(UserModel).where(
             UserModel.id == note_in.user_id,

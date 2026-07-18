@@ -5,6 +5,7 @@ import structlog
 from uuid import UUID
 
 from src.core.database import get_db
+from src.core.auth import get_current_user, require_role
 from src.domains.system.models import (
     WorkspaceModel,
     UserModel,
@@ -68,10 +69,19 @@ async def create_workspace(
 
 
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)
-async def get_workspace(workspace_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_workspace(
+    workspace_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     """
     Fetches the details of a specific workspace.
     """
+    if workspace_id != UUID(current_user["workspace_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this workspace details",
+        )
     result = await db.execute(
         select(WorkspaceModel).where(
             WorkspaceModel.id == workspace_id, WorkspaceModel.deleted_at.is_(None)
@@ -95,11 +105,19 @@ async def get_workspace(workspace_id: UUID, db: AsyncSession = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
 )
 async def add_workspace_user(
-    workspace_id: UUID, user_in: UserCreate, db: AsyncSession = Depends(get_db)
+    workspace_id: UUID,
+    user_in: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["administrator"])),
 ):
     """
     Adds a new user to a workspace and creates default personal settings.
     """
+    if workspace_id != UUID(current_user["workspace_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot add users to another workspace",
+        )
     await logger.ainfo(
         "add_workspace_user_requested",
         email=user_in.email,

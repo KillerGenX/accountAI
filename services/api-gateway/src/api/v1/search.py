@@ -6,6 +6,7 @@ from uuid import UUID
 from typing import List
 
 from src.core.database import get_db
+from src.core.auth import get_current_user
 from src.domains.account.models import AccountModel, AccountEmbeddingModel
 from src.domains.account.embeddings import embedding_client
 from src.domains.account.schemas import AccountResponse
@@ -23,14 +24,15 @@ class AccountSearchResponse(BaseModel):
 @router.get("/accounts", response_model=List[AccountSearchResponse])
 async def search_accounts(
     q: str = Query(..., min_length=1, description="Semantic search query"),
-    workspace_id: UUID = Query(..., description="Workspace ID to restrict search"),
     limit: int = Query(10, ge=1, le=50, description="Max search results to return"),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Performs a semantic search on corporate accounts under a workspace using pgvector.
     Queries the vector database against account summaries, contacts, and personal notes.
     """
+    workspace_id = UUID(current_user["workspace_id"])
     await logger.ainfo(
         "semantic_search_requested", query=q, workspace_id=str(workspace_id)
     )
