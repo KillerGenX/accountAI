@@ -8,6 +8,7 @@ with workflow.unsafe.imports_passed_through():
         update_account_in_db,
         detect_buying_signals,
         save_buying_signals_to_db,
+        get_active_accounts_from_db,
     )
 
 
@@ -47,3 +48,62 @@ class CompanyResearchWorkflow:
         )
 
         return summary
+
+
+@workflow.defn
+class DailyAccountMonitoringWorkflow:
+    @workflow.run
+    async def run(self) -> dict:
+        """
+        Retrieves all active accounts and runs buying signal checks for each.
+        Deduplication is handled automatically in the save activity.
+        """
+        # 1. Fetch all active accounts
+        accounts = await workflow.execute_activity(
+            get_active_accounts_from_db,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+
+        results = {
+            "processed_accounts_count": len(accounts),
+            "accounts_processed": [],
+            "error_accounts": [],
+        }
+
+        # 2. For each active account, detect and save buying signals
+        for account in accounts:
+            account_id = account["account_id"]
+            company_name = account["company_name"]
+
+            try:
+                # Detect buying signals
+                signals = await workflow.execute_activity(
+                    detect_buying_signals,
+                    company_name,
+                    start_to_close_timeout=timedelta(seconds=60),
+                )
+
+                # Save to DB (this will filter out duplicate headlines)
+                await workflow.execute_activity(
+                    save_buying_signals_to_db,
+                    {"account_id": account_id, "signals": signals},
+                    start_to_close_timeout=timedelta(seconds=60),
+                )
+
+                results["accounts_processed"].append(
+                    {
+                        "account_id": account_id,
+                        "company_name": company_name,
+                        "signals_count": len(signals),
+                    }
+                )
+            except Exception as e:
+                results["error_accounts"].append(
+                    {
+                        "account_id": account_id,
+                        "company_name": company_name,
+                        "error": str(e),
+                    }
+                )
+
+        return results

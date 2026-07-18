@@ -301,6 +301,7 @@ async def detect_buying_signals(company_name: str) -> list[dict]:
 async def save_buying_signals_to_db(data: dict) -> bool:
     """
     Saves detected buying signals to account_news and computes pgvector embeddings for search index.
+    Filters out duplicates by checking if the headline already exists for the account.
     """
     account_id = data.get("account_id")
     signals = data.get("signals", [])
@@ -330,8 +331,24 @@ async def save_buying_signals_to_db(data: dict) -> bool:
             return False
         workspace_id = row[0]
 
-        # 2. Insert signals and generate embeddings
+        # 2. Insert signals and generate embeddings (skipping duplicates)
+        inserted_count = 0
         for sig in signals:
+            # Check for duplicate headline for this account
+            cur.execute(
+                """
+                SELECT id FROM account_news 
+                WHERE account_id = %s AND headline = %s;
+                """,
+                (account_id, sig["headline"]),
+            )
+            existing_row = cur.fetchone()
+            if existing_row:
+                activity.logger.info(
+                    f"Signal already exists, skipping: {sig['headline']}"
+                )
+                continue
+
             cur.execute(
                 """
                 INSERT INTO account_news (id, workspace_id, account_id, headline, summary, source_url, signal_type, created_at)
@@ -348,6 +365,7 @@ async def save_buying_signals_to_db(data: dict) -> bool:
                 ),
             )
             news_id = cur.fetchone()[0]
+            inserted_count += 1
 
             # Generate embedding vector for the signal
             try:
@@ -368,25 +386,69 @@ async def save_buying_signals_to_db(data: dict) -> bool:
                     f"Failed to generate embedding for signal {news_id}: {emb_err}"
                 )
 
-        # 3. Update account completeness score (+5 per signal, capped at 100)
-        cur.execute(
-            """
-            UPDATE accounts 
-            SET completeness_score = LEAST(100, completeness_score + %s), 
-                updated_at = NOW() 
-            WHERE id = %s;
-            """,
-            (len(signals) * 5, account_id),
-        )
+        # 3. Update account completeness score (+5 per new signal, capped at 100)
+        if inserted_count > 0:
+            cur.execute(
+                """
+                UPDATE accounts 
+                SET completeness_score = LEAST(100, completeness_score + %s), 
+                    updated_at = NOW() 
+                WHERE id = %s;
+                """,
+                (inserted_count * 5, account_id),
+            )
 
         conn.commit()
         cur.close()
         conn.close()
 
         activity.logger.info(
-            "Successfully saved buying signals and updated search embeddings"
+            f"Successfully saved {inserted_count} new buying signals and updated search embeddings"
         )
         return True
     except Exception as e:
         activity.logger.error(f"Failed to save buying signals: {e}")
+        raise e
+
+
+@activity.defn
+async def get_active_accounts_from_db() -> list[dict]:
+    """
+    Fetches all active and non-deleted accounts from PostgreSQL database.
+    Returns a list of dicts with account metadata.
+    """
+    activity.logger.info("Fetching all active accounts from DB for monitoring")
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("DATABASE_URL environment variable is missing")
+
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+
+        # Query active and non-deleted accounts
+        cur.execute(
+            """
+            SELECT id, company_name, workspace_id 
+            FROM accounts 
+            WHERE status = 'active' AND deleted_at IS NULL;
+            """
+        )
+        rows = cur.fetchall()
+        accounts = []
+        for row in rows:
+            accounts.append(
+                {
+                    "account_id": str(row[0]),
+                    "company_name": row[1],
+                    "workspace_id": str(row[2]),
+                }
+            )
+
+        cur.close()
+        conn.close()
+        activity.logger.info(f"Successfully fetched {len(accounts)} active accounts")
+        return accounts
+    except Exception as e:
+        activity.logger.error(f"Failed to fetch active accounts: {e}")
         raise e

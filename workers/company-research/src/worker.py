@@ -24,12 +24,13 @@ structlog.configure(
 logger = structlog.get_logger()
 
 # Import workflows and activities
-from src.workflows import CompanyResearchWorkflow  # noqa: E402
+from src.workflows import CompanyResearchWorkflow, DailyAccountMonitoringWorkflow  # noqa: E402
 from src.activities import (  # noqa: E402
     research_company_profile,
     update_account_in_db,
     detect_buying_signals,
     save_buying_signals_to_db,
+    get_active_accounts_from_db,
 )  # noqa: E402
 
 # Global Temporal client
@@ -68,6 +69,31 @@ async def handle_nats_event(msg):
         )
 
 
+async def handle_monitoring_event(msg):
+    """
+    NATS callback triggered when a manual 'account.monitoring_requested' event is published.
+    Starts the asynchronous Temporal workflow to monitor all active accounts.
+    """
+    subject = msg.subject
+    await logger.ainfo("nats_monitoring_event_received", subject=subject)
+
+    try:
+        # Start the Daily Account Monitoring Workflow in Temporal
+        # We use a unique run ID prefix with timestamp or uuid to allow concurrent manual triggers if desired,
+        # or a standard id to avoid concurrent duplicates of the harian scrape.
+        # Let's use 'daily-monitoring-manual' as a single running instance to avoid concurrent duplicates of harian run.
+        await temporal_client.start_workflow(
+            DailyAccountMonitoringWorkflow.run,
+            id="daily-monitoring-manual",
+            task_queue="company-research-tasks",
+        )
+        await logger.ainfo("temporal_monitoring_workflow_started")
+    except Exception as e:
+        await logger.aerror(
+            "failed_to_start_temporal_monitoring_workflow", error=str(e)
+        )
+
+
 async def main():
     global temporal_client
 
@@ -78,22 +104,24 @@ async def main():
     await logger.ainfo("connecting_to_temporal", url=temporal_url)
     temporal_client = await Client.connect(temporal_url)
 
-    # 2. Connect to NATS and subscribe to account.created
+    # 2. Connect to NATS and subscribe to events
     await logger.ainfo("connecting_to_nats", url=nats_url)
     nc = await nats.connect(nats_url)
     await nc.subscribe("account.created", cb=handle_nats_event)
-    await logger.ainfo("nats_subscribed_to_subject", subject="account.created")
+    await nc.subscribe("account.monitoring_requested", cb=handle_monitoring_event)
+    await logger.ainfo("nats_subscribed_to_subjects")
 
     # 3. Start Temporal Worker to process activities and workflows
     worker = Worker(
         temporal_client,
         task_queue="company-research-tasks",
-        workflows=[CompanyResearchWorkflow],
+        workflows=[CompanyResearchWorkflow, DailyAccountMonitoringWorkflow],
         activities=[
             research_company_profile,
             update_account_in_db,
             detect_buying_signals,
             save_buying_signals_to_db,
+            get_active_accounts_from_db,
         ],
     )
 
