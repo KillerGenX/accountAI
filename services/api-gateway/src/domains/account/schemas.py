@@ -157,7 +157,11 @@ class DocumentResponse(BaseModel):
 
 class RagQueryRequest(BaseModel):
     account_id: UUID
-    query: str = Field(..., min_length=1, description="Question about the account capabilities or internal documents")
+    query: str = Field(
+        ...,
+        min_length=1,
+        description="Question about the account capabilities or internal documents",
+    )
 
 
 class RagCitation(BaseModel):
@@ -168,4 +172,3 @@ class RagCitation(BaseModel):
 class RagQueryResponse(BaseModel):
     answer: str
     citations: List[RagCitation]
-

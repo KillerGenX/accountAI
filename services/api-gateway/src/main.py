@@ -68,7 +68,6 @@ app.include_router(news_router, prefix="/api/v1/news")
 app.include_router(documents_router, prefix="/api/v1/documents")
 
 
-
 class HealthStatus(BaseModel):
     status: str
     environment: str

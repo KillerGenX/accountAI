@@ -51,7 +51,9 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150) -> List[str
     return chunks
 
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED
+)
 async def upload_document(
     account_id: UUID,
     file: UploadFile = File(...),
@@ -93,7 +95,11 @@ async def upload_document(
         )
 
     # 3. Create Storage Dir and Save Physical File
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+    root_dir = os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
+    )
     storage_dir = os.path.join(root_dir, "storage", "documents")
     os.makedirs(storage_dir, exist_ok=True)
 
@@ -253,7 +259,11 @@ async def delete_document(
         )
 
     # 2. Delete physical file from disk
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+    root_dir = os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
+    )
     file_path = os.path.join(root_dir, "storage", "documents", document.file_path)
     if os.path.exists(file_path):
         try:

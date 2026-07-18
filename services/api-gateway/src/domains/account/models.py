@@ -401,5 +401,3 @@ class AccountDocumentChunkModel(Base):
 
     # Relationships
     document = relationship("AccountDocumentModel", back_populates="chunks")
-
-
