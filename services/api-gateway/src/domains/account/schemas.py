@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 
@@ -141,3 +141,31 @@ class NoteResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Document & RAG Schemas ---
+class DocumentResponse(BaseModel):
+    id: UUID
+    workspace_id: UUID
+    account_id: UUID
+    filename: str
+    file_size: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RagQueryRequest(BaseModel):
+    account_id: UUID
+    query: str = Field(..., min_length=1, description="Question about the account capabilities or internal documents")
+
+
+class RagCitation(BaseModel):
+    source_name: str
+    source_type: str  # "document" or "note"
+
+
+class RagQueryResponse(BaseModel):
+    answer: str
+    citations: List[RagCitation]
+

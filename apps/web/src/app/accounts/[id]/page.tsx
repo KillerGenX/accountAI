@@ -18,7 +18,11 @@ import {
   Loader2,
   X,
   Mail,
-  Phone
+  Phone,
+  UploadCloud,
+  Trash2,
+  Cpu,
+  MessageSquare
 } from "lucide-react";
 // @ts-ignore
 import { Linkedin } from "lucide-react";
@@ -69,7 +73,21 @@ export default function AccountDetailPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "contacts" | "notes">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "contacts" | "notes" | "knowledge">("overview");
+
+  // Knowledge Hub & RAG states
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{role: "user" | "assistant"; content: string; citations?: any[]}[]>([
+    {
+      role: "assistant",
+      content: "Halo! Saya adalah Asisten AI Knowledge Hub. Ajukan pertanyaan apa pun mengenai kapabilitas korporat, penawaran masa lalu, atau rincian dari dokumen internal yang telah Anda unggah di atas!"
+    }
+  ]);
 
   // Sub-states
   const [showAddContact, setShowAddContact] = useState(false);
@@ -115,6 +133,15 @@ export default function AccountDetailPage() {
       if (notesRes.ok) {
         const notesData = await notesRes.json();
         setNotes(notesData);
+      }
+
+      // 4. Fetch documents
+      const docsRes = await fetch(`http://localhost:8000/api/v1/documents/?account_id=${accountId}`, {
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
+      if (docsRes.ok) {
+        const docsData = await docsRes.json();
+        setDocuments(docsData);
       }
     } catch (err) {
       console.error(err);
@@ -210,6 +237,99 @@ export default function AccountDetailPage() {
     }
   }
 
+  async function fetchDocuments() {
+    try {
+      setLoadingDocs(true);
+      const res = await fetch(`http://localhost:8000/api/v1/documents/?account_id=${accountId}`, {
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingDocs(false);
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    if (!file) return;
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`http://localhost:8000/api/v1/documents/upload?account_id=${accountId}`, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer mock-token-teguh"
+        },
+        body: formData
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Gagal mengunggah berkas PDF.");
+      }
+      fetchDocuments();
+    } catch (err: any) {
+      alert(err.message || "Failed to upload file");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeleteDoc(docId: string) {
+    if (!confirm("Apakah Anda yakin ingin menghapus berkas dokumen ini? Seluruh fragmen embedding teks AI akan dihapus permanen dari Supabase.")) return;
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/documents/${docId}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
+      if (res.ok) {
+        fetchDocuments();
+      } else {
+        throw new Error("Gagal menghapus dokumen");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleSendChat(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    setChatLoading(true);
+
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/documents/rag-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer mock-token-teguh"
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          query: userMsg
+        })
+      });
+      if (!res.ok) throw new Error("Gagal memproses jawaban RAG.");
+      const data = await res.json();
+      setChatMessages(prev => [...prev, { role: "assistant", content: data.answer, citations: data.citations }]);
+    } catch (err: any) {
+      setChatMessages(prev => [...prev, {
+        role: "assistant",
+        content: `Maaf, kendala koneksi RAG API: ${err.message || "Gagal menghubungi server backend."}`
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
@@ -290,7 +410,7 @@ export default function AccountDetailPage() {
 
       {/* Tabs navigation panel */}
       <div className="border-b border-slate-200 flex gap-6">
-        {(["overview", "contacts", "notes"] as const).map((tab) => (
+        {(["overview", "contacts", "notes", "knowledge"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -697,6 +817,192 @@ export default function AccountDetailPage() {
                       <Send className="w-4 h-4" /> Save Note
                     </>
                   )}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* KNOWLEDGE TAB */}
+        {activeTab === "knowledge" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left side - Document manager */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <UploadCloud className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider">
+                    Internal Knowledge Documents (PDF)
+                  </h3>
+                </div>
+
+                {/* Drag & Drop uploader area */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragActive(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleFileUpload(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all ${
+                    dragActive
+                      ? "border-blue-500 bg-blue-50/50"
+                      : "border-slate-200 hover:border-slate-300 bg-slate-50/30"
+                  }`}
+                >
+                  <UploadCloud className={`w-10 h-10 mb-3 ${dragActive ? "text-blue-500" : "text-slate-400"}`} />
+                  <p className="text-sm font-semibold text-slate-700">
+                    Seret & letakkan berkas PDF Anda di sini
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 mb-4">
+                    Atau klik tombol di bawah untuk memilih file (Maksimal 10MB)
+                  </p>
+
+                  <label className="relative cursor-pointer bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2 rounded-lg shadow-xs transition-colors flex items-center gap-1">
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" /> Mengindeks PDF...
+                      </>
+                    ) : (
+                      "Pilih File PDF"
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileUpload(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* File list table */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Daftar Dokumen Terunggah ({documents.length})
+                  </h4>
+
+                  {documents.length === 0 ? (
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-lg p-6 text-center text-slate-400 text-xs">
+                      Belum ada dokumen internal yang diunggah untuk perusahaan ini.
+                    </div>
+                  ) : (
+                    <div className="border border-slate-100 rounded-lg overflow-hidden">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold">
+                            <th className="p-3">Nama Berkas</th>
+                            <th className="p-3">Ukuran</th>
+                            <th className="p-3">Tanggal Unggah</th>
+                            <th className="p-3 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50 text-slate-700">
+                          {documents.map((doc) => (
+                            <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="p-3 font-semibold text-slate-800 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-red-500" />
+                                {doc.filename}
+                              </td>
+                              <td className="p-3 text-slate-500">
+                                {(doc.file_size / 1024).toFixed(1)} KB
+                              </td>
+                              <td className="p-3 text-slate-500">
+                                {new Date(doc.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  onClick={() => handleDeleteDoc(doc.id)}
+                                  className="text-slate-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                                  title="Hapus dokumen"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right side - RAG chatbot console */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col h-[580px] justify-between">
+              <div className="space-y-4 flex flex-col flex-1 min-h-0">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <MessageSquare className="w-5 h-5 text-indigo-600" />
+                  <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider">
+                    RAG Knowledge Assistant
+                  </h3>
+                </div>
+
+                {/* Scrollable conversation bubble */}
+                <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-xs scrollbar-thin">
+                  {chatMessages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`flex flex-col max-w-[85%] rounded-2xl p-4 gap-2 ${
+                        msg.role === "user"
+                          ? "bg-indigo-600 text-white ml-auto rounded-tr-none"
+                          : "bg-slate-50 border border-slate-100 text-slate-800 rounded-tl-none shadow-xs"
+                      }`}
+                    >
+                      <p className="leading-relaxed whitespace-pre-line">{msg.content}</p>
+                      
+                      {/* Citations block */}
+                      {msg.role === "assistant" && msg.citations && msg.citations.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200/50 mt-1 flex flex-wrap gap-1 items-center">
+                          <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold mr-1">Referensi:</span>
+                          {msg.citations.map((cite, cIdx) => (
+                            <span
+                              key={cIdx}
+                              className="inline-flex items-center gap-1 bg-white border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-2xs"
+                            >
+                              <Cpu className="w-2.5 h-2.5 text-indigo-500" />
+                              {cite.source_name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {chatLoading && (
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 text-slate-500 rounded-2xl rounded-tl-none p-4 max-w-[40%] shadow-xs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                      <span className="font-semibold text-[10px]">AI sedang menganalisis dokumen...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Chat Input form */}
+              <form onSubmit={handleSendChat} className="pt-4 border-t border-slate-100 flex gap-2">
+                <input
+                  required
+                  type="text"
+                  placeholder="Tanyakan penawaran lama, harga, dsb..."
+                  disabled={chatLoading}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  className="flex-1 border border-slate-200 px-3 py-2 rounded-lg text-xs focus:outline-hidden focus:border-indigo-500 transition-colors bg-slate-50 focus:bg-white"
+                />
+                <button
+                  type="submit"
+                  disabled={chatLoading || !chatInput.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white p-2.5 rounded-lg transition-all shadow-xs flex items-center justify-center"
+                >
+                  <Send className="w-4 h-4" />
                 </button>
               </form>
             </div>

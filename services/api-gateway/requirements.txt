@@ -13,5 +13,9 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 alembic>=1.11.0
 pgvector>=0.2.0
+pypdf>=4.2.0
+litellm[google]>=1.20.0
+
+
 
 

@@ -93,6 +93,9 @@ class AccountModel(Base):
     embeddings = relationship(
         "AccountEmbeddingModel", back_populates="account", cascade="all, delete-orphan"
     )
+    documents = relationship(
+        "AccountDocumentModel", back_populates="account", cascade="all, delete-orphan"
+    )
 
 
 class ContactModel(Base):
@@ -320,3 +323,83 @@ class AccountEmbeddingModel(Base):
 
     # Relationships
     account = relationship("AccountModel", back_populates="embeddings")
+
+
+class AccountDocumentModel(Base):
+    """
+    Table representing uploaded PDF corporate documents (Knowledge Layer 2).
+    """
+
+    __tablename__ = "account_documents"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    filename = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)  # in bytes
+    file_path = Column(String, nullable=False)  # Local storage path / key
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=func.now(),
+    )
+
+    # Relationships
+    account = relationship("AccountModel", back_populates="documents")
+    chunks = relationship(
+        "AccountDocumentChunkModel",
+        back_populates="document",
+        cascade="all, delete-orphan",
+    )
+
+
+class AccountDocumentChunkModel(Base):
+    """
+    Table representing chunks of uploaded PDF documents (for RAG).
+    """
+
+    __tablename__ = "account_document_chunks"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("account_documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    chunk_index = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=func.now(),
+    )
+
+    # Relationships
+    document = relationship("AccountDocumentModel", back_populates="chunks")
+
+

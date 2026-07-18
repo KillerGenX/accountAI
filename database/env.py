@@ -27,7 +27,9 @@ from src.domains.account.models import (
     AccountIntelligenceModel,
     AccountNewsModel,
     AccountNoteModel,
-    AccountEmbeddingModel
+    AccountEmbeddingModel,
+    AccountDocumentModel,
+    AccountDocumentChunkModel,
 )
 
 # This is the Alembic Config object

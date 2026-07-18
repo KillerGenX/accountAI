@@ -31,7 +31,7 @@ ai_required: true
 | Phase 9 | Real AI Research (LiteLLM + Vertex AI Gemini 2.5) | ✅ COMPLETE | 2026-07-18 |
 | Phase 10 | Buying Signal Employee + News Worker | ✅ COMPLETE | 2026-07-18 |
 | Phase 11 | Digital Workforce Console UI (Accept/Reject) | ✅ COMPLETE | 2026-07-18 |
-| Phase 12 | Knowledge Hub Layer 2 (PDF Upload + RAG) | ❌ NOT STARTED | — |
+| Phase 12 | Knowledge Hub Layer 2 (PDF Upload + RAG) | ✅ COMPLETE | 2026-07-18 |
 
 ---
 
@@ -78,7 +78,8 @@ D:\Teguh\ES\Account\                   ← Monorepo Root
 │                   ├── workspaces.py   ← Workspace management + user invite
 │                   ├── search.py       ← Semantic vector search endpoint
 │                   ├── monitoring.py   ← Manual daily scraper trigger endpoint ✅ ACTIVE
-│                   └── news.py         ← News signals retrieval & status updates ✅ ACTIVE
+│                   ├── news.py         ← News signals retrieval & status updates ✅ ACTIVE
+│                   └── documents.py    ← PDF uploading, parsing, chunking & RAG endpoint ✅ ACTIVE
 │
 ├── workers/
 │   ├── company-research/              ← Company Research Employee ✅ ACTIVE
@@ -211,6 +212,8 @@ The default workspace ID hardcoded in the frontend:
 | **Account Embedding** | Custom HTTP | Google Vertex AI | `text-embedding-004` | Returns 768 dims, zero-padded to 1536 |
 | **Search Embedding** | Same as above | Google Vertex AI | `text-embedding-004` | Used at query time for pgvector cosine distance |
 | **Tavily Search** | httpx | Tavily API | N/A | Falls back to mock if `TAVILY_API_KEY` not set |
+| **Document Embedding**| Custom HTTP | Google Vertex AI | `text-embedding-004` | Generates embeddings for parsed PDF text chunks |
+| **RAG Synthesis** | LiteLLM | Google Vertex AI | `vertex_ai/gemini-2.5-flash` | Hybrid query synthesization with citations |
 
 ---
 
@@ -265,6 +268,14 @@ The default workspace ID hardcoded in the frontend:
 | GET | `/api/v1/news/` | JWT | List scoped news discoveries with status filtering |
 | PUT | `/api/v1/news/{id}/status` | JWT | Update news alert verification status |
 
+## Documents & RAG
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/v1/documents/upload?account_id={id}` | JWT | Upload internal corporate PDF, parse and index |
+| GET | `/api/v1/documents/?account_id={id}` | JWT | List all metadata of uploaded PDFs for account |
+| DELETE | `/api/v1/documents/{id}` | JWT | Delete document and cascade delete embeddings/chunks |
+| POST | `/api/v1/documents/rag-query` | JWT | Execute hybrid semantically-augmented QA with citations |
+
 ---
 
 # Implementation Gaps (What Still Needs to Be Built)
@@ -274,7 +285,6 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 | Gap | Priority | Phase | Impact |
 |---|---|---|---|
 | **Account Scoring Employee** (AI 0-100 scoring) | 🟡 Medium | Phase 11 | No prioritization for which accounts to target |
-| **Knowledge Hub Layer 2** (PDF upload + RAG) | 🟡 Medium | Phase 12 | AM cannot upload internal docs (pricing, proposals) |
 | **Search UI in frontend** | 🟡 Medium | Phase 10 | Semantic search API works but no search bar in UI |
 | **Real Auth flow** (Supabase Auth UI / login page) | 🟡 Medium | Phase 13 | Frontend still uses hardcoded mock token |
 
@@ -330,3 +340,6 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 | Manual Scraper Trigger | API POST → NATS → Temporal | ✅ PASS |
 | Workforce Console UI | Inbox console retrieves pending, approved, and rejected alerts correctly | ✅ PASS |
 | Verification Actions | Approving/rejecting updates status in DB and animates card away | ✅ PASS |
+| PDF Document Parser | `test_rag_local.py` text extraction & chunking | ✅ PASS |
+| Knowledge Hub UI | PDF drag-and-drop & list documents table | ✅ PASS |
+| AI RAG Assistant Chat | Gemini 2.5 Flash query synthesis with sources | ✅ PASS |

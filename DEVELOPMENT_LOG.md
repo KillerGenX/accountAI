@@ -6,12 +6,21 @@ This document tracks all completed features, configuration updates, and verifica
 
 ## 🎯 Current Focus & Work in Progress
 
-- **Current Milestone:** Phase 12 - Knowledge Hub Layer 2 (PDF Upload + RAG)
-- **Objective:** Implement PDF document parsing, vector segment embedding, and semantic retrieval for the Account Manager's private corporate notes.
+- **Current Milestone:** Phase 13 - Analytics & Reporting Layer (Dashboard Reports)
+- **Objective:** Design and implement global analytics charts, reporting export widgets, and visual trend metrics for AM workspace.
 - **Active Files:**
-  - `services/api-gateway/src/api/v1/notes.py`
-  - `workers/company-research/src/activities.py`
-- **Last Action Completed:** Successfully built the Digital Workforce Console UI & Backend API Gateway endpoints with reactive verification tabs (Pending, Approved, Rejected) and multi-tenant isolation.
+  - `apps/web/src/app/page.tsx`
+- **Last Action Completed:** Fully completed PDF uploading, parsing, chunking, and semantic Vertex AI / pgvector RAG chatbot interface inside Next.js details workspace for Phase 12.
+
+---
+
+## 📅 [2026-07-18] - Phase 12: Knowledge Hub Layer 2 - PDF Upload & RAG (100% Completed)
+
+### 📦 1. Completed Tasks (PDF Upload, Chunking & RAG Console)
+- **Supabase Database Extension:** Introduced `account_documents` and `account_document_chunks` models mapped through SQL relationships with cascade deletes on embeddings and physical storage.
+- **FastAPI Document Controller:** Created `/api/v1/documents` endpoint suite for handling chunking of up to 10MB PDFs, mapping embeddings, and performing cosine distance searches.
+- **Semantic RAG Query:** Engineered an asynchronous chatbot endpoint using LiteLLM + Google Vertex AI Gemini 2.5 Flash to synthesize answers referencing both uploaded company PDFs and AM personal notes.
+- **Next.js Knowledge Panel:** Built drag-and-drop PDF uploader, documents index table list, and beautiful glassmorphism chatbot UI displaying real-time citations.
 
 ---
 
@@ -161,6 +170,9 @@ This document tracks all completed features, configuration updates, and verifica
 | **E2E Daily Scraper** | API POST → NATS → Temporal | Successfully triggers `DailyAccountMonitoringWorkflow` which runs on active accounts, filters out duplicate headlines, and saves them to the DB | **[PASS]** |
 | **Workforce Console UI**| Next.js Client → FastAPI API | Inbox console retrieves pending, approved, and rejected alerts correctly with elegant count badges | **[PASS]** |
 | **Verification Actions**| Button Click → PUT Status | Approving/rejecting an alert triggers beautiful slide animations and pop-up toast, instantly updating PostgreSQL | **[PASS]** |
+| **PDF Document Parser** | Python `test_rag_local.py` | PyPDF parses PDF documents successfully and outputs correct text chunks | **[PASS]** |
+| **RAG Knowledge Hub UI** | Drag & Drop → API POST | Successfully uploads PDF from frontend, generates embeddings in backend, and renders document listing | **[PASS]** |
+| **AI RAG Assistant Chat** | Chat Input → REST API POST | Submits user questions, performs hybrid semantic search, and outputs Gemini 2.5 Flash synthesized answers with proper citations | **[PASS]** |
 
 ---
 
