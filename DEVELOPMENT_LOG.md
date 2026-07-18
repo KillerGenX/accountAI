@@ -6,11 +6,22 @@ This document tracks all completed features, configuration updates, and verifica
 
 ## 🎯 Current Focus & Work in Progress
 
-- **Current Milestone:** Phase 9 - Real AI Research Integration (LiteLLM)
-- **Objective:** Integrate LiteLLM and a search API (Tavily/Perplexity) into the company research worker to replace mock AI summaries with real scraped company intelligence.
+- **Current Milestone:** Phase 10 - Real-time Buying Signals Integration
+- **Objective:** Implement the Buying Signal Employee to scan news for corporate trigger events (funding, leadership changes, partnerships) and register buying signals in the database.
 - **Active Files:**
-  - `workers/company-research/src/activities.py`
-- **Last Action Completed:** Successfully implemented and tested E2E JWT Authentication & Access Control (Phase 8) using Supabase Auth endpoints and Redis session caching.
+  - `workers/buying-signals/src/activities.py`
+- **Last Action Completed:** Successfully integrated LiteLLM abstraction layer using Google Vertex AI `gemini-2.5-flash` model and Tavily/Mock search APIs (Phase 9), enabling real-time corporate intelligence profiling.
+
+---
+
+## 📅 [2026-07-18] - Phase 9: Real AI Research Integration (100% Completed)
+
+### 📦 1. Completed Tasks (LiteLLM & Search Integration)
+- **LiteLLM Ingestion Layer:** Integrated `litellm[google]` into the worker virtual environment to communicate dynamically with any LLM provider.
+- **Vertex AI Gemini 2.5 Integration:** Discovered that `gemini-1.5-flash` is deprecated/disabled in user's GCP environment, and successfully verified/configured `vertex_ai/gemini-2.5-flash` as the default chat model.
+- **Tavily Search API Hook:** Integrated Tavily search parameters into `activities.py` to ingest real-time news articles, falling back to a structured mock search scraper if API key is not present.
+- **Structured Indonesian Synthesis:** Configured prompt architecture to enforce Indonesian responses under 150 words as a single cohesive paragraph.
+- **Automatic pgvector Update:** Verified E2E that the newly generated business summary updates the database and regenerates a fresh 1536-dimension zero-padded vector embedding.
 
 ---
 
@@ -123,6 +134,7 @@ This document tracks all completed features, configuration updates, and verifica
 | **Semantic Vector Search** | Script `test_search_e2e.py` | pgvector cosine distance calculation finds correct account based on private notes | **[PASS]** |
 | **JWT Authentication** | Script `test_auth.py` | FastAPI endpoint protection, auth checks, and workspace/role isolation | **[PASS]** |
 | **Redis Session Caching** | Script `test_auth.py` | Cache hit verifies tokens instantly under 2ms using Redis session key | **[PASS]** |
+| **Real AI Research** | Script `test_ai_research.py` | LiteLLM connects to GCP Vertex AI `gemini-2.5-flash` and generates profile summary in Indonesian | **[PASS]** |
 
 ---
 
