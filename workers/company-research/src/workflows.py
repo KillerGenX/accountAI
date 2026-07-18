@@ -3,7 +3,12 @@ from temporalio import workflow
 
 # Import activities safely within Temporal workflow sandbox
 with workflow.unsafe.imports_passed_through():
-    from src.activities import research_company_profile, update_account_in_db
+    from src.activities import (
+        research_company_profile,
+        update_account_in_db,
+        detect_buying_signals,
+        save_buying_signals_to_db,
+    )
 
 
 @workflow.defn
@@ -24,6 +29,20 @@ class CompanyResearchWorkflow:
         await workflow.execute_activity(
             update_account_in_db,
             {"account_id": account_id, "summary": summary},
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+
+        # 3. Execute Buying Signals Detection Activity
+        signals = await workflow.execute_activity(
+            detect_buying_signals,
+            company_name,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+
+        # 4. Execute Save Buying Signals to DB Activity
+        await workflow.execute_activity(
+            save_buying_signals_to_db,
+            {"account_id": account_id, "signals": signals},
             start_to_close_timeout=timedelta(seconds=60),
         )
 

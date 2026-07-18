@@ -25,7 +25,12 @@ logger = structlog.get_logger()
 
 # Import workflows and activities
 from src.workflows import CompanyResearchWorkflow  # noqa: E402
-from src.activities import research_company_profile, update_account_in_db  # noqa: E402
+from src.activities import (  # noqa: E402
+    research_company_profile,
+    update_account_in_db,
+    detect_buying_signals,
+    save_buying_signals_to_db,
+)  # noqa: E402
 
 # Global Temporal client
 temporal_client = None
@@ -84,7 +89,12 @@ async def main():
         temporal_client,
         task_queue="company-research-tasks",
         workflows=[CompanyResearchWorkflow],
-        activities=[research_company_profile, update_account_in_db],
+        activities=[
+            research_company_profile,
+            update_account_in_db,
+            detect_buying_signals,
+            save_buying_signals_to_db,
+        ],
     )
 
     await logger.ainfo("temporal_worker_running", task_queue="company-research-tasks")
