@@ -286,7 +286,9 @@ async def detect_buying_signals(company_name: str) -> list[dict]:
         if not signals:
             signals = generate_mock_buying_signals(company_name)
 
-        activity.logger.info(f"Detected {len(signals)} buying signals using model {llm_model}")
+        activity.logger.info(
+            f"Detected {len(signals)} buying signals using model {llm_model}"
+        )
         return signals
     except Exception as e:
         activity.logger.error(
