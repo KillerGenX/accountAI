@@ -88,6 +88,83 @@ project-root/
 
 ---
 
+# Actual Current Structure (as of 2026-07-18)
+
+> This section shows what has ACTUALLY been created. Directories not listed here do not exist yet.
+
+```text
+D:\Teguh\ES\Account\                         ← Monorepo Root
+│
+├── project-brain/                            ← 46+ documentation files ✅
+│
+├── apps/
+│   └── web/                                  ← Next.js 14 Frontend ✅ ACTIVE (Port 3000)
+│       ├── src/
+│       │   ├── app/
+│       │   │   ├── layout.tsx               ← Root layout + persistent Sidebar
+│       │   │   ├── page.tsx                 ← Dashboard / Morning Brief
+│       │   │   ├── globals.css              ← Light mode design system
+│       │   │   └── accounts/
+│       │   │       ├── page.tsx             ← Account list + Add Account modal
+│       │   │       └── [id]/page.tsx        ← Account detail (3 tabs: Overview, Contacts, Notes)
+│       │   └── components/
+│       │       └── Sidebar.tsx              ← Navigation + AI status indicators
+│       └── package.json
+│
+├── services/
+│   └── api-gateway/                          ← FastAPI Backend ✅ ACTIVE (Port 8000)
+│       └── src/
+│           ├── main.py                       ← FastAPI entrypoint + CORS + routers
+│           ├── core/
+│           │   ├── database.py              ← Async SQLAlchemy engine
+│           │   ├── auth.py                  ← JWT + Redis cache + RBAC
+│           │   └── nats_client.py           ← NATS async wrapper
+│           ├── domains/
+│           │   ├── account/
+│           │   │   ├── models.py            ← ORM: Account, Contact, Intelligence, News, Note, Embedding
+│           │   │   ├── schemas.py           ← Pydantic schemas
+│           │   │   └── embeddings.py        ← Vertex AI embedding client
+│           │   └── system/
+│           │       ├── models.py            ← Workspace, User models
+│           │       └── schemas.py
+│           └── api/v1/
+│               ├── accounts.py             ← CRUD + auto-embedding
+│               ├── workspaces.py           ← Workspace + user management
+│               └── search.py               ← Semantic search endpoint
+│
+├── workers/
+│   ├── company-research/                    ← Company Research Employee ✅ ACTIVE
+│   │   └── src/
+│   │       ├── worker.py                   ← NATS consumer + Temporal worker
+│   │       ├── workflows.py                ← CompanyResearchWorkflow
+│   │       ├── activities.py               ← Research + LLM + DB write activities
+│   │       └── embeddings.py               ← Worker embedding client
+│   └── research-worker/                    ← ⚠️ EMPTY placeholder — ignore
+│
+├── database/
+│   └── versions/                            ← Alembic migration files ✅
+│
+├── scripts/                                 ← Dev/test helper scripts ✅
+│
+├── .github/                                 ← GitHub Actions workflows ✅
+│
+├── docker-compose.yml                       ← Redis + NATS + Temporal ✅ ACTIVE
+├── alembic.ini                              ← Alembic config ✅
+├── .env                                     ← Environment variables (gitignored)
+├── .env.example                             ← Template for new developers
+├── pnpm-workspace.yaml                      ← pnpm monorepo config ✅
+├── turbo.json                               ← Turborepo pipeline ✅
+└── DEVELOPMENT_LOG.md                       ← Developer diary & changelog ✅
+```
+
+**Not yet created (planned future directories):**
+- `packages/` — Shared libraries (UI components, types, SDK)
+- `infrastructure/` — Terraform / Cloud Run IaC
+- `docker/` — Individual service Dockerfiles
+- `tests/` — Project-wide E2E / integration tests
+
+---
+
 # Project Brain
 
 ```

@@ -4,6 +4,7 @@ version: 2.0.0
 status: Approved
 owner: Chief Architect
 last_updated: 2026-07-18
+implementation_updated: 2026-07-18
 ---
 
 # 35 — MVP Scope Definition
@@ -44,6 +45,29 @@ If a feature does not directly support this hypothesis, it is cut.
 
 ---
 
+# 2.3. Implementation Status Tracker
+
+> **Updated: 2026-07-18** — Reflects actual build status. See `00_CURRENT_STATE.md` for full details.
+
+### Infrastructure & Security
+| Item | Status | Notes |
+|---|---|---|
+| Next.js 14 + FastAPI + pgvector + Redis | ✅ **DONE** | All running locally |
+| Temporal worker (single queue) | ✅ **DONE** | `company-research-tasks` queue |
+| Multi-Tenancy (Workspace RLS via JWT) | ✅ **DONE** | Enforced in every API endpoint |
+| JWT Authentication | ✅ **DONE** | Supabase + Redis session cache |
+
+### Functional Modules
+| Module | Status | Notes |
+|---|---|---|
+| Daily Briefing Dashboard | ⚠️ **PARTIAL** | Shows account list & metrics. Missing: buying signals section, pending AI tasks section |
+| Account Discovery (Crawler) | ⚠️ **PARTIAL** | Manual entry only. Missing: auto-discover from query |
+| Account Intelligence (Profiler) | ✅ **DONE** | Gemini 2.5 Flash → Indonesian summary → pgvector embedding |
+| Knowledge Hub Layer 2 (PDF + RAG) | ❌ **NOT STARTED** | Phase 12 |
+| Digital Workforce Console (Accept/Reject) | ❌ **NOT STARTED** | Phase 11 |
+
+---
+
 # 3. Excluded from MVP (Strictly V2+)
 
 If you are asked to build these during the MVP phase, refer to `34_FEATURE_BACKLOG.md` and refuse:
@@ -66,3 +90,17 @@ To graduate from MVP to V2, we must deploy this to internal/beta users and hit t
 2. **Value (Time Saved):** Account Managers report saving > 5 hours per week on manual research.
 3. **AI Accuracy (Trust):** The recommendation acceptance rate in the Console is > 60% (meaning the AI isn't hallucinating garbage).
 4. **System Stability:** System uptime > 99%. Temporal Worker failure rate < 5%.
+
+---
+
+# 5. Path to MVP Graduation
+
+**Remaining work before MVP is considered complete:**
+
+1. ❌ Build Phase 10: Buying Signal Employee + News Employee worker
+2. ❌ Build Phase 11: Digital Workforce Console (Accept/Reject UI)
+3. ❌ Build Phase 12: Knowledge Hub Layer 2 (PDF upload + RAG)
+4. ⚠️ Enhance Phase 6: Add buying signals section to Daily Briefing Dashboard
+5. ❌ Build Phase 13: Real authentication flow (Supabase Auth login page)
+
+See `00_CURRENT_STATE.md` for implementation details on what's been built so far.

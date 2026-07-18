@@ -115,18 +115,21 @@ Chief AI Officer (Virtual — Orchestration Layer)
 - **Does:** Deep company research — structure, strategy, financials, technology
 - **Produces:** Company Research Summary
 - **MVP:** ✅ Yes
+- **Implementation:** ✅ **BUILT** — `workers/company-research/` using LiteLLM + Gemini 2.5 Flash + Tavily
 
 ### Industry Research Employee
 - **Trigger:** AccountCreated (industry not yet profiled), Scheduled (monthly)
 - **Does:** Industry landscape, trends, regulatory environment
 - **Produces:** Industry Intelligence Report
 - **MVP:** ❌ V2
+- **Implementation:** ❌ Not built
 
 ### News Employee
 - **Trigger:** Scheduled (daily, per active account)
 - **Does:** Monitors news for company mentions and signal events
 - **Produces:** Account News Feed
 - **MVP:** ✅ Yes
+- **Implementation:** ❌ **NOT BUILT** — DB table `account_news` exists. Worker needed in Phase 10.
 
 ## Inter-Department Flow
 ```
@@ -150,42 +153,49 @@ Research Department → (publishes ResearchCompleted)
 - **Does:** Detects trigger events signaling purchase readiness
 - **Produces:** Buying Signal Report with confidence score
 - **MVP:** ✅ Yes
+- **Implementation:** ❌ **NOT BUILT** — Phase 10. Note: basic signal detection proto-logic exists in `activities.py` (`detect_buying_signals`), but no dedicated worker yet.
 
 ### Account Scoring Employee
 - **Trigger:** ResearchCompleted, BuyingSignalDetected
 - **Does:** Scores discovered accounts on 0–100 scale
 - **Produces:** Account Score with justification
 - **MVP:** ✅ Yes
+- **Implementation:** ❌ **NOT BUILT** — Only `completeness_score` (0-100) exists in DB. No AI scoring logic yet.
 
 ### Competitor Employee
 - **Trigger:** OpportunityCreated, Scheduled (weekly per active opportunity)
 - **Does:** Identifies competitors per opportunity and recommends counter-strategy
 - **Produces:** Competitor Intelligence Report
 - **MVP:** ❌ V2
+- **Implementation:** ❌ Not built
 
 ### Next Best Action Employee
 - **Trigger:** DealScoreUpdated, MeetingCompleted, OpportunityStageChanged
 - **Does:** Recommends one specific action per opportunity per day
 - **Produces:** Next Best Action Recommendation
 - **MVP:** ❌ V2
+- **Implementation:** ❌ Not built
 
 ### Risk Assessment Employee
 - **Trigger:** Scheduled (daily, per active opportunity)
 - **Does:** Detects stalling deals and close date risks
 - **Produces:** Deal Risk Alert
 - **MVP:** ❌ V2
+- **Implementation:** ❌ Not built
 
 ### Pipeline Employee
 - **Trigger:** Scheduled (daily)
 - **Does:** Monitors overall pipeline health
 - **Produces:** Pipeline Health Report
 - **MVP:** ❌ V2
+- **Implementation:** ❌ Not built
 
 ### Forecast Employee
 - **Trigger:** OpportunityStageChanged, DealScoreUpdated, Scheduled (weekly)
 - **Does:** Calculates AI-adjusted revenue forecast
 - **Produces:** ForecastUpdated event with breakdown
 - **MVP:** ❌ V2
+- **Implementation:** ❌ Not built
 
 ## Inter-Department Flow
 ```
@@ -385,6 +395,24 @@ AI Operations Department:
 **Total MVP: 7 Digital Employees**
 
 All other employees are activated in V2 or later phases.
+
+---
+
+# MVP Implementation Status (as of 2026-07-18)
+
+| Employee | Dept | MVP | Implementation Status | Location |
+|---|---|---|---|---|
+| Company Research Employee | Research | ✅ | ✅ **BUILT** | `workers/company-research/` |
+| News Employee | Research | ✅ | ❌ **NOT BUILT** | Phase 10 |
+| Buying Signal Employee | Sales Intel | ✅ | ❌ **NOT BUILT** | Phase 10 (proto in activities.py) |
+| Account Scoring Employee | Sales Intel | ✅ | ❌ **NOT BUILT** | Phase 11 |
+| Account Intelligence Employee | Customer Intel | ✅ | ⚠️ **PARTIAL** | Handled by Company Research Worker |
+| Contact Intelligence Employee | Customer Intel | ✅ | ❌ **NOT BUILT** | Manual only |
+| Knowledge Indexing Employee | Knowledge | ✅ | ❌ **NOT BUILT** | Phase 12 |
+| Dashboard Priority Employee | AI Ops | ✅ | ❌ **NOT BUILT** | Dashboard is static |
+
+> See `00_CURRENT_STATE.md` for full context and file locations.
+
 
 ---
 
