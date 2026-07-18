@@ -24,7 +24,10 @@ structlog.configure(
 logger = structlog.get_logger()
 
 # Import workflows and activities
-from src.workflows import CompanyResearchWorkflow, DailyAccountMonitoringWorkflow  # noqa: E402
+from src.workflows import (
+    CompanyResearchWorkflow,
+    DailyAccountMonitoringWorkflow,
+)  # noqa: E402
 from src.activities import (  # noqa: E402
     research_company_profile,
     update_account_in_db,

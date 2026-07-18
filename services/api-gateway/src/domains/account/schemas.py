@@ -119,6 +119,7 @@ class NewsResponse(BaseModel):
     source_url: Optional[str] = None
     published_at: Optional[datetime] = None
     signal_type: Optional[str] = None
+    status: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

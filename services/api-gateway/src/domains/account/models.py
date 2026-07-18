@@ -221,6 +221,12 @@ class AccountNewsModel(Base):
     signal_type = Column(
         String, nullable=True
     )  # e.g., expansion, leadership, financial, technology
+    status = Column(
+        String,
+        nullable=False,
+        server_default="pending",
+        default="pending",
+    )
 
     created_at = Column(
         DateTime(timezone=True),

@@ -427,13 +427,11 @@ async def get_active_accounts_from_db() -> list[dict]:
         cur = conn.cursor()
 
         # Query active and non-deleted accounts
-        cur.execute(
-            """
+        cur.execute("""
             SELECT id, company_name, workspace_id 
             FROM accounts 
             WHERE status = 'active' AND deleted_at IS NULL;
-            """
-        )
+            """)
         rows = cur.fetchall()
         accounts = []
         for row in rows:
