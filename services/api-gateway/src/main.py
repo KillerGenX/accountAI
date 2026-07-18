@@ -27,6 +27,7 @@ from src.core.database import async_session_maker  # noqa: E402
 from src.core.nats_client import nats_client  # noqa: E402
 from src.api.v1.workspaces import router as workspaces_router  # noqa: E402
 from src.api.v1.accounts import router as accounts_router  # noqa: E402
+from src.api.v1.search import router as search_router  # noqa: E402
 
 app = FastAPI(
     title="PROJECT BRAIN API Gateway",
@@ -58,6 +59,7 @@ async def shutdown_event():
 # Register Domain Routers
 app.include_router(workspaces_router, prefix="/api/v1/workspaces")
 app.include_router(accounts_router, prefix="/api/v1/accounts")
+app.include_router(search_router, prefix="/api/v1/search")
 
 
 class HealthStatus(BaseModel):

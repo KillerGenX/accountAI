@@ -44,3 +44,6 @@ build/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# GCP Service Account Keys
+arcane-splicer-*.json

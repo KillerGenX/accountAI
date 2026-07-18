@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 # Load env variables from root folder (.env is 2 levels up from workers/company-research/src/)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../../.env"))
 
+from src.embeddings import embedding_client  # noqa: E402
+
 
 @activity.defn
 async def research_company_profile(company_name: str) -> str:
@@ -55,6 +57,33 @@ async def update_account_in_db(data: dict) -> bool:
         """,
             (summary, account_id),
         )
+
+        # Generate and save embedding for the updated summary
+        try:
+            vector = await embedding_client.get_embedding(summary)
+            vector_str = f"[{','.join(map(str, vector))}]"
+
+            # Delete existing summary embedding
+            cur.execute(
+                """
+                DELETE FROM account_embeddings 
+                WHERE account_id = %s AND content_type = 'summary';
+                """,
+                (account_id,),
+            )
+
+            # Insert new summary embedding
+            cur.execute(
+                """
+                INSERT INTO account_embeddings (id, account_id, content_type, embedding, source_record_id, created_at)
+                VALUES (gen_random_uuid(), %s, 'summary', %s, %s, NOW());
+                """,
+                (account_id, vector_str, account_id),
+            )
+        except Exception as emb_err:
+            activity.logger.error(
+                f"Failed to generate/update embedding in worker: {emb_err}"
+            )
 
         conn.commit()
         cur.close()

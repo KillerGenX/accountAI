@@ -7,7 +7,13 @@ from typing import List, Optional
 
 from src.core.database import get_db
 from src.core.nats_client import nats_client
-from src.domains.account.models import AccountModel, ContactModel, AccountNoteModel
+from src.domains.account.models import (
+    AccountModel,
+    ContactModel,
+    AccountNoteModel,
+    AccountEmbeddingModel,
+)
+from src.domains.account.embeddings import embedding_client
 from src.domains.system.models import WorkspaceModel, UserModel
 from src.domains.account.schemas import (
     AccountCreate,
@@ -93,6 +99,26 @@ async def create_account(account_in: AccountCreate, db: AsyncSession = Depends(g
         )
 
     await logger.ainfo("account_created_successfully", account_id=str(new_account.id))
+
+    # 4. Generate and save embedding for the new account summary
+    try:
+        text_to_embed = f"Company Name: {new_account.company_name}. Industry: {new_account.industry or 'Unknown'}. Sub-industry: {new_account.sub_industry or 'Unknown'}."
+        vector = await embedding_client.get_embedding(text_to_embed)
+        new_embedding = AccountEmbeddingModel(
+            account_id=new_account.id,
+            content_type="summary",
+            embedding=vector,
+            source_record_id=new_account.id,
+        )
+        db.add(new_embedding)
+        await db.commit()
+    except Exception as emb_err:
+        await logger.aerror(
+            "account_embedding_creation_failed",
+            account_id=str(new_account.id),
+            error=str(emb_err),
+        )
+
     return new_account
 
 
@@ -207,6 +233,26 @@ async def add_account_contact(
 
     await db.commit()
     await db.refresh(new_contact)
+
+    # 4. Generate embedding for the contact
+    try:
+        text_to_embed = f"Contact: {new_contact.full_name}. Title: {new_contact.title or 'Unknown'}. Department: {new_contact.department or 'Unknown'}. Seniority: {new_contact.seniority or 'Unknown'}. Buying Role: {new_contact.buying_role or 'Unknown'}."
+        vector = await embedding_client.get_embedding(text_to_embed)
+        new_embedding = AccountEmbeddingModel(
+            account_id=account_id,
+            content_type="contact",
+            embedding=vector,
+            source_record_id=new_contact.id,
+        )
+        db.add(new_embedding)
+        await db.commit()
+    except Exception as emb_err:
+        await logger.aerror(
+            "contact_embedding_creation_failed",
+            contact_id=str(new_contact.id),
+            error=str(emb_err),
+        )
+
     return new_contact
 
 
@@ -277,4 +323,24 @@ async def add_account_note(
     db.add(new_note)
     await db.commit()
     await db.refresh(new_note)
+
+    # 4. Generate embedding for the note
+    try:
+        text_to_embed = f"Personal Note: {new_note.content}"
+        vector = await embedding_client.get_embedding(text_to_embed)
+        new_embedding = AccountEmbeddingModel(
+            account_id=account_id,
+            content_type="note",
+            embedding=vector,
+            source_record_id=new_note.id,
+        )
+        db.add(new_embedding)
+        await db.commit()
+    except Exception as emb_err:
+        await logger.aerror(
+            "note_embedding_creation_failed",
+            note_id=str(new_note.id),
+            error=str(emb_err),
+        )
+
     return new_note
