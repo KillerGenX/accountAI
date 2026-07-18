@@ -30,7 +30,7 @@ ai_required: true
 | Phase 8 | JWT Authentication + Redis Cache + RBAC | ✅ COMPLETE | 2026-07-18 |
 | Phase 9 | Real AI Research (LiteLLM + Vertex AI Gemini 2.5) | ✅ COMPLETE | 2026-07-18 |
 | Phase 10 | Buying Signal Employee + News Worker | ✅ COMPLETE | 2026-07-18 |
-| Phase 11 | Digital Workforce Console UI (Accept/Reject) | ❌ NOT STARTED | — |
+| Phase 11 | Digital Workforce Console UI (Accept/Reject) | ✅ COMPLETE | 2026-07-18 |
 | Phase 12 | Knowledge Hub Layer 2 (PDF Upload + RAG) | ❌ NOT STARTED | — |
 
 ---
@@ -47,6 +47,8 @@ D:\Teguh\ES\Account\                   ← Monorepo Root
 │           │   ├── layout.tsx          ← Root layout + Sidebar shell
 │           │   ├── page.tsx            ← Dashboard / Morning Brief
 │           │   ├── globals.css         ← Light mode design system
+│           │   ├── monitoring/
+│           │   │   └── page.tsx        ← Digital Workforce Console (Reactive Inbox Tabs) ✅ ACTIVE
 │           │   └── accounts/
 │           │       ├── page.tsx        ← Account list + Add Account modal
 │           │       └── [id]/
@@ -75,7 +77,8 @@ D:\Teguh\ES\Account\                   ← Monorepo Root
 │                   ├── accounts.py     ← CRUD: accounts, contacts, notes
 │                   ├── workspaces.py   ← Workspace management + user invite
 │                   ├── search.py       ← Semantic vector search endpoint
-│                   └── monitoring.py   ← Manual daily scraper trigger endpoint ✅ ACTIVE
+│                   ├── monitoring.py   ← Manual daily scraper trigger endpoint ✅ ACTIVE
+│                   └── news.py         ← News signals retrieval & status updates ✅ ACTIVE
 │
 ├── workers/
 │   ├── company-research/              ← Company Research Employee ✅ ACTIVE
@@ -256,6 +259,12 @@ The default workspace ID hardcoded in the frontend:
 |---|---|---|---|
 | GET | `/api/v1/search/accounts?q={query}` | JWT | Semantic vector search via pgvector |
 
+## News Signals
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/news/` | JWT | List scoped news discoveries with status filtering |
+| PUT | `/api/v1/news/{id}/status` | JWT | Update news alert verification status |
+
 ---
 
 # Implementation Gaps (What Still Needs to Be Built)
@@ -264,7 +273,6 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 
 | Gap | Priority | Phase | Impact |
 |---|---|---|---|
-| **Digital Workforce Console** (Accept/Reject inbox) | 🔴 High | Phase 11 | AM cannot review/approve AI recommendations |
 | **Account Scoring Employee** (AI 0-100 scoring) | 🟡 Medium | Phase 11 | No prioritization for which accounts to target |
 | **Knowledge Hub Layer 2** (PDF upload + RAG) | 🟡 Medium | Phase 12 | AM cannot upload internal docs (pricing, proposals) |
 | **Search UI in frontend** | 🟡 Medium | Phase 10 | Semantic search API works but no search bar in UI |
@@ -320,3 +328,5 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 | Real AI Research | `gemini-2.5-flash` → Indonesian profile | ✅ PASS |
 | Scheduled Daily Scraper | Temporal schedule + Daily Monitoring | ✅ PASS |
 | Manual Scraper Trigger | API POST → NATS → Temporal | ✅ PASS |
+| Workforce Console UI | Inbox console retrieves pending, approved, and rejected alerts correctly | ✅ PASS |
+| Verification Actions | Approving/rejecting updates status in DB and animates card away | ✅ PASS |
