@@ -29,7 +29,7 @@ ai_required: true
 | Phase 7 | Semantic Vector Search (pgvector) | ✅ COMPLETE | 2026-07-18 |
 | Phase 8 | JWT Authentication + Redis Cache + RBAC | ✅ COMPLETE | 2026-07-18 |
 | Phase 9 | Real AI Research (LiteLLM + Vertex AI Gemini 2.5) | ✅ COMPLETE | 2026-07-18 |
-| Phase 10 | Buying Signal Employee + News Worker | ❌ NOT STARTED | — |
+| Phase 10 | Buying Signal Employee + News Worker | ✅ COMPLETE | 2026-07-18 |
 | Phase 11 | Digital Workforce Console UI (Accept/Reject) | ❌ NOT STARTED | — |
 | Phase 12 | Knowledge Hub Layer 2 (PDF Upload + RAG) | ❌ NOT STARTED | — |
 
@@ -74,15 +74,17 @@ D:\Teguh\ES\Account\                   ← Monorepo Root
 │               └── v1/
 │                   ├── accounts.py     ← CRUD: accounts, contacts, notes
 │                   ├── workspaces.py   ← Workspace management + user invite
-│                   └── search.py       ← Semantic vector search endpoint
+│                   ├── search.py       ← Semantic vector search endpoint
+│                   └── monitoring.py   ← Manual daily scraper trigger endpoint ✅ ACTIVE
 │
 ├── workers/
 │   ├── company-research/              ← Company Research Employee ✅ ACTIVE
 │   │   └── src/
-│   │       ├── worker.py              ← NATS consumer + Temporal worker entrypoint
-│   │       ├── workflows.py           ← CompanyResearchWorkflow orchestration
-│   │       ├── activities.py          ← AI research + DB update activities
-│   │       └── embeddings.py          ← Worker-side embedding client
+│   │       ├── worker.py              ← NATS consumer + Temporal worker entrypoint ✅ ACTIVE
+│   │       ├── workflows.py           ← Workflows: CompanyResearch, DailyAccountMonitoring ✅ ACTIVE
+│   │       ├── activities.py          ← Activities: research, db_update, get_active_accounts ✅ ACTIVE
+│   │       ├── embeddings.py          ← Worker-side embedding client
+│   │       └── register_schedule.py   ← Native Temporal Cron registration script ✅ ACTIVE
 │   └── research-worker/              ← Placeholder directory (EMPTY, ignore)
 │
 ├── database/
@@ -262,8 +264,6 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 
 | Gap | Priority | Phase | Impact |
 |---|---|---|---|
-| **Buying Signal Employee** (dedicated worker) | 🔴 High | Phase 10 | No auto-detection of trigger events (funding, CTO hire) |
-| **News Employee** (scheduled daily scraper) | 🔴 High | Phase 10 | `account_news` table always empty, news tab non-functional |
 | **Digital Workforce Console** (Accept/Reject inbox) | 🔴 High | Phase 11 | AM cannot review/approve AI recommendations |
 | **Account Scoring Employee** (AI 0-100 scoring) | 🟡 Medium | Phase 11 | No prioritization for which accounts to target |
 | **Knowledge Hub Layer 2** (PDF upload + RAG) | 🟡 Medium | Phase 12 | AM cannot upload internal docs (pricing, proposals) |
@@ -296,7 +296,7 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 
 ---
 
-# Verification Test Results (as of Phase 9)
+# Verification Test Results (as of Phase 10)
 
 | Component | Test | Status |
 |---|---|---|
@@ -318,3 +318,5 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 | JWT Authentication | Supabase token + Redis cache | ✅ PASS |
 | Redis Session Cache | Cache hit < 2ms | ✅ PASS |
 | Real AI Research | `gemini-2.5-flash` → Indonesian profile | ✅ PASS |
+| Scheduled Daily Scraper | Temporal schedule + Daily Monitoring | ✅ PASS |
+| Manual Scraper Trigger | API POST → NATS → Temporal | ✅ PASS |

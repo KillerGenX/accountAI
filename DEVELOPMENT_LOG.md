@@ -6,11 +6,23 @@ This document tracks all completed features, configuration updates, and verifica
 
 ## 🎯 Current Focus & Work in Progress
 
-- **Current Milestone:** Phase 10 - Real-time Buying Signals Integration
-- **Objective:** Implement the Buying Signal Employee to scan news for corporate trigger events (funding, leadership changes, partnerships) and register buying signals in the database.
+- **Current Milestone:** Phase 11 - Digital Workforce Console UI
+- **Objective:** Implement Next.js center-console inbox tabs (Pending, Approved, Rejected) and corresponding FastAPI support APIs.
 - **Active Files:**
-  - `workers/buying-signals/src/activities.py`
-- **Last Action Completed:** Successfully integrated LiteLLM abstraction layer using Google Vertex AI `gemini-2.5-flash` model and Tavily/Mock search APIs (Phase 9), enabling real-time corporate intelligence profiling.
+  - `apps/web/src/app/monitoring/page.tsx`
+  - `services/api-gateway/src/api/v1/news.py`
+- **Last Action Completed:** Successfully completed and verified Phase 10 (Daily Scheduled Monitoring Worker) including database anti-duplication, Temporal cron schedules, and manual NATS trigger endpoint.
+
+---
+
+## 📅 [2026-07-18] - Phase 10: Scheduled Daily Monitoring Worker (100% Completed)
+
+### 📦 1. Completed Tasks (Scheduled Daily News Scraper & Buying Signal Worker)
+- **Database Anti-Duplication:** Implemented pre-insert headline verification against existing records in `account_news` to ensure only new articles are saved and the completeness score only increments for actual new discoveries.
+- **Active Accounts Discovery:** Created `get_active_accounts_from_db` activity to dynamically load all target companies marked as active in PostgreSQL.
+- **Daily Account Monitoring Workflow:** Created `DailyAccountMonitoringWorkflow` in Temporal orchestrating the fetching of active companies, conducting Tavily search-based AI trigger news analysis, and saving results.
+- **Manual Trigger Endpoint:** Implemented FastAPI endpoint `POST /api/v1/monitoring/trigger` which publishes NATS event `account.monitoring_requested` to start the Daily Scraper asynchronously.
+- **Native Temporal Cron Schedule:** Created `register_schedule.py` running on top of Temporal gRPC Client, registering a native cron job running daily at 06:00 AM UTC.
 
 ---
 
@@ -135,6 +147,7 @@ This document tracks all completed features, configuration updates, and verifica
 | **JWT Authentication** | Script `test_auth.py` | FastAPI endpoint protection, auth checks, and workspace/role isolation | **[PASS]** |
 | **Redis Session Caching** | Script `test_auth.py` | Cache hit verifies tokens instantly under 2ms using Redis session key | **[PASS]** |
 | **Real AI Research** | Script `test_ai_research.py` | LiteLLM connects to GCP Vertex AI `gemini-2.5-flash` and generates profile summary in Indonesian | **[PASS]** |
+| **E2E Daily Scraper** | API POST → NATS → Temporal | Successfully triggers `DailyAccountMonitoringWorkflow` which runs on active accounts, filters out duplicate headlines, and saves them to the DB | **[PASS]** |
 
 ---
 

@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Load env variables from root folder
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../../.env"))
 
-from src.workflows import DailyAccountMonitoringWorkflow
+from src.workflows import DailyAccountMonitoringWorkflow  # noqa: E402
 
 
 async def main():
