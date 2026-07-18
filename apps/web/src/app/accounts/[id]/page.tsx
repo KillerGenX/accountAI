@@ -92,20 +92,26 @@ export default function AccountDetailPage() {
     try {
       setLoading(true);
       // 1. Fetch main account profile
-      const accRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}`);
+      const accRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}`, {
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
       if (!accRes.ok) throw new Error("Account not found");
       const accData = await accRes.json();
       setAccount(accData);
 
       // 2. Fetch contacts
-      const contactRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/contacts`);
+      const contactRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/contacts`, {
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
       if (contactRes.ok) {
         const contactData = await contactRes.json();
         setContacts(contactData);
       }
 
       // 3. Fetch notes
-      const notesRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/notes?user_id=${DEFAULT_USER_ID}`);
+      const notesRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/notes`, {
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
       if (notesRes.ok) {
         const notesData = await notesRes.json();
         setNotes(notesData);
@@ -132,7 +138,10 @@ export default function AccountDetailPage() {
       setSubmittingNote(true);
       const res = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/notes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer mock-token-teguh"
+        },
         body: JSON.stringify({
           user_id: DEFAULT_USER_ID,
           content: newNote
@@ -171,7 +180,10 @@ export default function AccountDetailPage() {
 
       const res = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/contacts`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer mock-token-teguh"
+        },
         body: JSON.stringify(body)
       });
 

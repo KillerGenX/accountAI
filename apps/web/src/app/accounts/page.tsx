@@ -44,7 +44,9 @@ export default function AccountsPage() {
   async function fetchAccounts() {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:8000/api/v1/accounts/?workspace_id=${DEFAULT_WORKSPACE_ID}`);
+      const res = await fetch(`http://localhost:8000/api/v1/accounts/`, {
+        headers: { "Authorization": "Bearer mock-token-teguh" }
+      });
       if (!res.ok) throw new Error("Could not fetch accounts from API server.");
       const data = await res.json();
       setAccounts(data);
@@ -79,7 +81,10 @@ export default function AccountsPage() {
 
       const res = await fetch("http://localhost:8000/api/v1/accounts/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer mock-token-teguh"
+        },
         body: JSON.stringify(body)
       });
 

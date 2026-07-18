@@ -40,13 +40,17 @@ export default function Dashboard() {
       try {
         setLoading(true);
         // 1. Fetch Workspace Profile
-        const wsRes = await fetch(`http://localhost:8000/api/v1/workspaces/${DEFAULT_WORKSPACE_ID}`);
+        const wsRes = await fetch(`http://localhost:8000/api/v1/workspaces/${DEFAULT_WORKSPACE_ID}`, {
+          headers: { "Authorization": "Bearer mock-token-teguh" }
+        });
         if (!wsRes.ok) throw new Error("API Server is offline or default workspace has not been created.");
         const wsData = await wsRes.json();
         setWorkspace(wsData);
 
         // 2. Fetch Accounts
-        const accRes = await fetch(`http://localhost:8000/api/v1/accounts/?workspace_id=${DEFAULT_WORKSPACE_ID}`);
+        const accRes = await fetch(`http://localhost:8000/api/v1/accounts/`, {
+          headers: { "Authorization": "Bearer mock-token-teguh" }
+        });
         if (accRes.ok) {
           const accData = await accRes.json();
           setAccounts(accData);
