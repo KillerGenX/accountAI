@@ -13,7 +13,9 @@ if not DATABASE_URL:
 # SQLAlchemy connection string must use asyncpg driver for async connections
 # Supabase connection pooler uses postgresql://, we convert to postgresql+asyncpg://
 if DATABASE_URL.startswith("postgresql://"):
-    ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    ASYNC_DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://", "postgresql+asyncpg://", 1
+    )
 elif DATABASE_URL.startswith("postgres://"):
     ASYNC_DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 else:
@@ -33,18 +35,17 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
-    connect_args=connect_args
+    connect_args=connect_args,
 )
 
 # Create session maker factory for generating async database sessions
 async_session_maker = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False
+    bind=engine, class_=AsyncSession, expire_on_commit=False
 )
 
 # Declarative Base for models definition
 Base = declarative_base()
+
 
 # FastAPI Dependency injection provider for DB sessions
 async def get_db():

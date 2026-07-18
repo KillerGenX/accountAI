@@ -5,6 +5,7 @@ import structlog
 
 logger = structlog.get_logger()
 
+
 class NATSClient:
     def __init__(self):
         self.nc = None
@@ -28,7 +29,7 @@ class NATSClient:
     async def publish(self, subject: str, payload: dict):
         if not self.nc:
             raise RuntimeError("NATSClient is not connected. Call connect() first.")
-        
+
         try:
             data = json.dumps(payload).encode("utf-8")
             # We publish using standard NATS publish
@@ -37,6 +38,7 @@ class NATSClient:
         except Exception as e:
             await logger.aerror("nats_publish_failed", subject=subject, error=str(e))
             raise e
+
 
 # Create a global client instance
 nats_client = NATSClient()

@@ -1,6 +1,6 @@
 import os
 import sys
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import structlog
@@ -17,16 +17,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 structlog.configure(
     processors=[
         structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ]
 )
 logger = structlog.get_logger()
 
 # Import database session maker, NATS client, and routers
-from src.core.database import async_session_maker
-from src.core.nats_client import nats_client
-from src.api.v1.workspaces import router as workspaces_router
-from src.api.v1.accounts import router as accounts_router
+from src.core.database import async_session_maker  # noqa: E402
+from src.core.nats_client import nats_client  # noqa: E402
+from src.api.v1.workspaces import router as workspaces_router  # noqa: E402
+from src.api.v1.accounts import router as accounts_router  # noqa: E402
 
 app = FastAPI(
     title="PROJECT BRAIN API Gateway",
@@ -43,23 +43,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Register NATS connection lifecycle handlers
 @app.on_event("startup")
 async def startup_event():
     await nats_client.connect()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     await nats_client.close()
+
 
 # Register Domain Routers
 app.include_router(workspaces_router, prefix="/api/v1/workspaces")
 app.include_router(accounts_router, prefix="/api/v1/accounts")
 
+
 class HealthStatus(BaseModel):
     status: str
     environment: str
     supabase_connected: bool
+
 
 @app.get("/health", response_model=HealthStatus, status_code=status.HTTP_200_OK)
 async def health_check():
@@ -74,21 +79,23 @@ async def health_check():
             supabase_connected = True
     except Exception as e:
         await logger.aerror("health_check_db_connection_failed", error=str(e))
-        
-    await logger.ainfo("health_check_triggered", environment=os.getenv("ENVIRONMENT", "development"))
+
+    await logger.ainfo(
+        "health_check_triggered", environment=os.getenv("ENVIRONMENT", "development")
+    )
     return {
         "status": "healthy",
         "environment": os.getenv("ENVIRONMENT", "development"),
-        "supabase_connected": supabase_connected
+        "supabase_connected": supabase_connected,
     }
+
 
 @app.get("/api/v1")
 async def root():
-    return {
-        "message": "Welcome to PROJECT BRAIN API Gateway v1",
-        "docs_url": "/docs"
-    }
+    return {"message": "Welcome to PROJECT BRAIN API Gateway v1", "docs_url": "/docs"}
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
