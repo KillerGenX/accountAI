@@ -117,6 +117,7 @@ async def create_account(
         text_to_embed = f"Company Name: {new_account.company_name}. Industry: {new_account.industry or 'Unknown'}. Sub-industry: {new_account.sub_industry or 'Unknown'}."
         vector = await embedding_client.get_embedding(text_to_embed)
         new_embedding = AccountEmbeddingModel(
+            workspace_id=new_account.workspace_id,
             account_id=new_account.id,
             content_type="summary",
             embedding=vector,

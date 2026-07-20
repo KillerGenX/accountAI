@@ -6,11 +6,11 @@ This document tracks all completed features, configuration updates, and verifica
 
 ## 🎯 Current Focus & Work in Progress
 
-- **Current Milestone:** Phase 14 - Analytics & Reporting Layer (Dashboard Reports)
-- **Objective:** Design and implement global analytics charts, reporting export widgets, and visual trend metrics for AM workspace.
+- **Current Milestone:** Phase 14 - Signal Intelligence & Buying Signals Worker
+- **Objective:** Design and implement worker to process active buying signals and insights from news.
 - **Active Files:**
-  - `apps/web/src/app/page.tsx`
-- **Last Action Completed:** Fully completed Supabase Auth cloud registration flow, workspace requests database triggers, route guarding, and removed hardcoded mock token headers for Phase 13.
+  - `workers/signal-intelligence/`
+- **Last Action Completed:** Fully completed Phase 13.5 - UI Dashboard Polish, RAG Database restructuring for Layer 2 Global Knowledge Hub, and Pending Signals Widget.
 
 ---
 
@@ -23,6 +23,19 @@ This document tracks all completed features, configuration updates, and verifica
 - **Branding Update:** Rebranded auth pages (`/login`, `/register`, `/request-access`) from placeholder "Project Brain" to `AccountAI`.
 - **Mock Token Refactoring:** Stripped hardcoded `mock-token-teguh` authorization headers across the frontend dashboard, accounts, and detail routing files, routing authentications through `fetchWithAuth`.
 - **Testing Utility Scripts:** Authored `scripts/truncate_db.py` for database resets and `scripts/approve_request.py` for CLI-level access request approvals.
+
+---
+
+## 📅 [2026-07-20] - Phase 13.5: Dashboard Polish & Global Knowledge Hub (100% Completed)
+
+### 📦 1. Completed Tasks (Knowledge Layer 2 & UI Updates)
+- **Knowledge Architecture Evolution:** Split RAG architecture into Layer 2 (Global Workspace Docs) and Layer 3 (Target Account Docs) by decoupling `account_id` as nullable in PostgreSQL.
+- **Backend RAG Upgrades:** Refactored `upload_document` and semantic `rag_query` endpoints to natively query both global space and account-specific spaces simultaneously using SQLAlchemy ORM `or_` filters.
+- **Global Knowledge Hub UI:** Engineered `apps/web/src/app/knowledge/page.tsx` offering workspace-wide brochure/pricelist PDF uploads and a Global AI assistant console.
+- **Dashboard Widget Replacement:** Removed static dummy workforce metrics and substituted it with a live "Pending Signals Awaiting Review" widget aligned with PRD Module 9.
+- **AI Sidebar Health Polling:** Connected the Next.js `Sidebar.tsx` indicators directly to the FastAPI `/health` endpoint to reflect true NATS, Temporal, and Supabase connectivity.
+- **Dynamic Identification:** Fixed fake naming artifacts ("Good morning, Teguh") and placeholder workspace names by binding them to `dbUser` profiles and live workspace database lookups.
+- **Bug Fixes:** Resolved `NotNullViolationError` crash in account embedding worker triggered by missing `workspace_id` in account creation schema.
 
 ---
 

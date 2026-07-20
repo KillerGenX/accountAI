@@ -4,11 +4,11 @@ import pypdf
 import litellm
 import structlog
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from src.core.database import get_db
 from src.core.auth import get_current_user
@@ -55,8 +55,8 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 150) -> List[str
     "/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED
 )
 async def upload_document(
-    account_id: UUID,
     file: UploadFile = File(...),
+    account_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -72,20 +72,21 @@ async def upload_document(
         workspace_id=str(workspace_id),
     )
 
-    # 1. Verify account exists in workspace
-    acc_res = await db.execute(
-        select(AccountModel).where(
-            AccountModel.id == account_id,
-            AccountModel.workspace_id == workspace_id,
-            AccountModel.deleted_at.is_(None),
+    # 1. Verify account exists in workspace (if account_id is provided)
+    if account_id:
+        acc_res = await db.execute(
+            select(AccountModel).where(
+                AccountModel.id == account_id,
+                AccountModel.workspace_id == workspace_id,
+                AccountModel.deleted_at.is_(None),
+            )
         )
-    )
-    account = acc_res.scalar_one_or_none()
-    if not account:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found in your workspace",
-        )
+        account = acc_res.scalar_one_or_none()
+        if not account:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account not found in your workspace",
+            )
 
     # 2. Validate PDF format
     if not file.filename.lower().endswith(".pdf"):
@@ -184,6 +185,7 @@ async def upload_document(
             # 6b. Generate Embedding for this Chunk
             vector = await embedding_client.get_embedding(chunk)
             db_embedding = AccountEmbeddingModel(
+                workspace_id=workspace_id,
                 account_id=account_id,
                 content_type="document",
                 embedding=vector,
@@ -214,20 +216,24 @@ async def upload_document(
 
 @router.get("/", response_model=List[DocumentResponse])
 async def list_documents(
-    account_id: UUID,
+    account_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Lists all uploaded knowledge documents for a specific account.
+    Lists uploaded knowledge documents. If account_id is provided, lists account-specific docs.
+    Otherwise, lists global workspace docs.
     """
     workspace_id = UUID(current_user["workspace_id"])
-    result = await db.execute(
-        select(AccountDocumentModel).where(
-            AccountDocumentModel.account_id == account_id,
-            AccountDocumentModel.workspace_id == workspace_id,
-        )
+    query = select(AccountDocumentModel).where(
+        AccountDocumentModel.workspace_id == workspace_id
     )
+    if account_id:
+        query = query.where(AccountDocumentModel.account_id == account_id)
+    else:
+        query = query.where(AccountDocumentModel.account_id.is_(None))
+        
+    result = await db.execute(query)
     return result.scalars().all()
 
 
@@ -345,7 +351,11 @@ async def rag_query(
         stmt = (
             select(AccountEmbeddingModel, distance_col)
             .where(
-                AccountEmbeddingModel.account_id == req.account_id,
+                AccountEmbeddingModel.workspace_id == workspace_id,
+                or_(
+                    AccountEmbeddingModel.account_id == req.account_id,
+                    AccountEmbeddingModel.account_id.is_(None)
+                ),
                 AccountEmbeddingModel.content_type.in_(["document", "note"]),
             )
             .order_by("distance")

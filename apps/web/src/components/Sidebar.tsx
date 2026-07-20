@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { 
   LayoutDashboard, 
   Building2, 
@@ -9,15 +12,44 @@ import {
   Users, 
   Radio, 
   Cpu, 
-  Database 
+  Database,
+  Globe
 } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { fetchWithAuth, dbUser } = useAuth();
+  const [health, setHealth] = useState<any>(null);
+  const [workspace, setWorkspace] = useState<any>(null);
+
+  useEffect(() => {
+    // Poll Health Status every 30 seconds
+    const checkHealth = async () => {
+      try {
+        const res = await fetchWithAuth("http://localhost:8000/health");
+        if (res.ok) setHealth(await res.json());
+      } catch (err) {}
+    };
+    checkHealth();
+    const intervalId = setInterval(checkHealth, 30000);
+    
+    // Fetch active workspace
+    const fetchWorkspace = async () => {
+      if (!dbUser?.workspace_id) return;
+      try {
+        const res = await fetchWithAuth(`http://localhost:8000/api/v1/workspaces/${dbUser.workspace_id}`);
+        if (res.ok) setWorkspace(await res.json());
+      } catch (err) {}
+    };
+    fetchWorkspace();
+
+    return () => clearInterval(intervalId);
+  }, [dbUser]);
 
   const menuItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Accounts", href: "/accounts", icon: Building2 },
+    { name: "Knowledge Hub", href: "/knowledge", icon: Globe },
     { name: "Workforce", href: "/monitoring", icon: Cpu },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
@@ -42,9 +74,11 @@ export default function Sidebar() {
         <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
           <div className="flex flex-col">
             <span className="font-semibold text-xs text-slate-700 truncate max-w-[150px]">
-              Enterprise AM Team
+              {workspace ? workspace.name : "Memuat..."}
             </span>
-            <span className="text-[10px] text-slate-400">ES Global Corp</span>
+            <span className="text-[10px] text-slate-400">
+              {workspace ? workspace.company_name : "..."}
+            </span>
           </div>
           <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
         </div>
@@ -85,9 +119,15 @@ export default function Sidebar() {
               <Radio className="w-3.5 h-3.5 text-blue-500" />
               <span>NATS Event Bus</span>
             </div>
-            <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
-              Active
-            </span>
+            {health?.nats_connected ? (
+              <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                Active
+              </span>
+            ) : (
+              <span className="font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px]">
+                Offline
+              </span>
+            )}
           </div>
           
           {/* Temporal Workflows Indicator */}
@@ -96,9 +136,15 @@ export default function Sidebar() {
               <Cpu className="w-3.5 h-3.5 text-indigo-500" />
               <span>Temporal Engines</span>
             </div>
-            <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
-              Online
-            </span>
+            {health?.temporal_connected ? (
+              <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                Online
+              </span>
+            ) : (
+              <span className="font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px]">
+                Offline
+              </span>
+            )}
           </div>
 
           {/* Supabase Connection Indicator */}
@@ -107,9 +153,15 @@ export default function Sidebar() {
               <Database className="w-3.5 h-3.5 text-emerald-500" />
               <span>Supabase Cloud</span>
             </div>
-            <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
-              Synced
-            </span>
+            {health?.supabase_connected ? (
+              <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                Synced
+              </span>
+            ) : (
+              <span className="font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px]">
+                Failed
+              </span>
+            )}
           </div>
         </div>
       </div>

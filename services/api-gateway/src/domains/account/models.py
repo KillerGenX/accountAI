@@ -303,10 +303,15 @@ class AccountEmbeddingModel(Base):
         default=uuid.uuid4,
         server_default=text("gen_random_uuid()"),
     )
+    workspace_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     account_id = Column(
         UUID(as_uuid=True),
         ForeignKey("accounts.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
 
     content_type = Column(String, nullable=False)  # summary, news, contact
@@ -346,7 +351,7 @@ class AccountDocumentModel(Base):
     account_id = Column(
         UUID(as_uuid=True),
         ForeignKey("accounts.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     filename = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False)  # in bytes
@@ -385,10 +390,15 @@ class AccountDocumentChunkModel(Base):
         ForeignKey("account_documents.id", ondelete="CASCADE"),
         nullable=False,
     )
+    workspace_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     account_id = Column(
         UUID(as_uuid=True),
         ForeignKey("accounts.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     chunk_index = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)

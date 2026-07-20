@@ -28,6 +28,14 @@ interface Workspace {
   industry: string;
 }
 
+interface NewsSignal {
+  id: string;
+  headline: string;
+  summary: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
 const DEFAULT_WORKSPACE_ID = "348ea7c6-11f3-4589-9518-e567c0958b7f";
 
 export default function Dashboard() {
@@ -35,6 +43,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [pendingSignals, setPendingSignals] = useState<NewsSignal[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const activeWorkspaceId = dbUser?.workspace_id || DEFAULT_WORKSPACE_ID;
@@ -54,6 +63,14 @@ export default function Dashboard() {
         if (accRes.ok) {
           const accData = await accRes.json();
           setAccounts(accData);
+        }
+
+        // 3. Fetch Pending Signals
+        const newsRes = await fetchWithAuth(`/api/v1/news/`);
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          const pending = newsData.filter((s: NewsSignal) => s.status === "pending");
+          setPendingSignals(pending);
         }
         setError(null);
       } catch (err: any) {
@@ -102,10 +119,10 @@ export default function Dashboard() {
       <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Good morning, Teguh!
+            Good morning, {dbUser?.full_name ? dbUser.full_name.split(' ')[0] : 'User'}!
           </h1>
           <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
-            Here is your account intelligence overview for the <span className="font-semibold text-slate-700">{workspace?.name || "Enterprise"}</span> workspace. Digital Employees are active and listening to event signals.
+            Here is your account intelligence overview for the <span className="font-semibold text-slate-700">{workspace?.name || "Workspace"}</span> workspace. Digital Employees are active and listening to event signals.
           </p>
         </div>
         
@@ -128,9 +145,6 @@ export default function Dashboard() {
             </span>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-800">{totalAccounts}</span>
-              <span className="text-xs font-semibold text-emerald-600 flex items-center gap-0.5">
-                <TrendingUp className="w-3.5 h-3.5" /> +12%
-              </span>
             </div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
@@ -225,55 +239,44 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Digital Workforce Active Directory */}
+        {/* Pending Signals Active Directory */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
-          <div className="px-6 py-4 border-b border-slate-200">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <h2 className="font-bold text-sm text-slate-800 uppercase tracking-wider">
-              Active Digital Workforce
+              Pending Signals Awaiting Review
             </h2>
+            <span className="text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
+              {pendingSignals.length}
+            </span>
           </div>
           <div className="p-6 space-y-4">
-            {/* Worker 1 */}
-            <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold font-mono">
-                AD
+            {pendingSignals.length === 0 ? (
+              <div className="text-center text-slate-400 text-xs py-4">
+                All caught up! No pending signals to review.
               </div>
-              <div className="flex-1 space-y-0.5">
-                <p className="text-xs font-bold text-slate-700">AccountDiscoveryEmployee</p>
-                <p className="text-[10px] text-slate-400">Scans news and web leads daily</p>
-              </div>
-              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                Active
-              </span>
-            </div>
-
-            {/* Worker 2 */}
-            <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold font-mono">
-                CR
-              </div>
-              <div className="flex-1 space-y-0.5">
-                <p className="text-xs font-bold text-slate-700">CompanyResearchEmployee</p>
-                <p className="text-[10px] text-slate-400">Renders business briefs & profiles</p>
-              </div>
-              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                Active
-              </span>
-            </div>
-
-            {/* Worker 3 */}
-            <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 text-violet-600 flex items-center justify-center text-xs font-bold font-mono">
-                BS
-              </div>
-              <div className="flex-1 space-y-0.5">
-                <p className="text-xs font-bold text-slate-700">BuyingSignalEmployee</p>
-                <p className="text-[10px] text-slate-400">Monitors executive & role hires</p>
-              </div>
-              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                Active
-              </span>
-            </div>
+            ) : (
+              pendingSignals.slice(0, 3).map(sig => (
+                <div key={sig.id} className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-slate-200 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-600 flex items-center justify-center text-xs font-bold">
+                    !
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs font-bold text-slate-700 line-clamp-1" title={sig.headline}>{sig.headline}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {new Date(sig.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Link href="/monitoring" className="text-[9px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded transition-colors whitespace-nowrap">
+                    Review
+                  </Link>
+                </div>
+              ))
+            )}
+            {pendingSignals.length > 3 && (
+              <Link href="/monitoring" className="block text-center text-xs font-semibold text-blue-600 hover:text-blue-700 pt-2">
+                View {pendingSignals.length - 3} more...
+              </Link>
+            )}
           </div>
         </div>
       </div>

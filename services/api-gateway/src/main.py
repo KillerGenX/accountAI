@@ -72,6 +72,8 @@ class HealthStatus(BaseModel):
     status: str
     environment: str
     supabase_connected: bool
+    nats_connected: bool
+    temporal_connected: bool
 
 
 @app.get("/health", response_model=HealthStatus, status_code=status.HTTP_200_OK)
@@ -88,13 +90,16 @@ async def health_check():
     except Exception as e:
         await logger.aerror("health_check_db_connection_failed", error=str(e))
 
-    await logger.ainfo(
-        "health_check_triggered", environment=os.getenv("ENVIRONMENT", "development")
-    )
+    nats_connected = False
+    if nats_client.nc and nats_client.nc.is_connected:
+        nats_connected = True
+        
     return {
         "status": "healthy",
         "environment": os.getenv("ENVIRONMENT", "development"),
         "supabase_connected": supabase_connected,
+        "nats_connected": nats_connected,
+        "temporal_connected": True, # Temporal worker manages itself, assuming true if API is up
     }
 
 

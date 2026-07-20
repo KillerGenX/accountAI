@@ -33,6 +33,7 @@ ai_required: true
 | Phase 11 | Digital Workforce Console UI (Accept/Reject) | ✅ COMPLETE | 2026-07-18 |
 | Phase 12 | Knowledge Hub Layer 2 (PDF Upload + RAG) | ✅ COMPLETE | 2026-07-18 |
 | Phase 13 | Real Auth Flow & Workspace Request System | ✅ COMPLETE | 2026-07-20 |
+| Phase 13.5 | Dashboard Polish & Global Knowledge Hub Layer 2 UI | ✅ COMPLETE | 2026-07-20 |
 
 ---
 
