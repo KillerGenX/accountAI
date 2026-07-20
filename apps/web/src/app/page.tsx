@@ -119,7 +119,7 @@ export default function Dashboard() {
       <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Good morning, {dbUser?.full_name ? dbUser.full_name.split(' ')[0] : 'User'}!
+            {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening"}, {dbUser?.full_name ? dbUser.full_name.split(' ')[0] : 'User'}!
           </h1>
           <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
             Here is your account intelligence overview for the <span className="font-semibold text-slate-700">{workspace?.name || "Workspace"}</span> workspace. Digital Employees are active and listening to event signals.

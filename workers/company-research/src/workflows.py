@@ -9,7 +9,30 @@ with workflow.unsafe.imports_passed_through():
         detect_buying_signals,
         save_buying_signals_to_db,
         get_active_accounts_from_db,
+        search_for_prospects,
+        save_prospects_to_db,
     )
+
+
+@workflow.defn
+class ProspectingWorkflow:
+    @workflow.run
+    async def run(self, data: dict) -> dict:
+        # 1. Search and extract prospects
+        prospects = await workflow.execute_activity(
+            search_for_prospects,
+            data,
+            start_to_close_timeout=timedelta(minutes=2),
+        )
+
+        # 2. Save prospects to DB
+        inserted_count = await workflow.execute_activity(
+            save_prospects_to_db,
+            {"workspace_id": data.get("workspace_id"), "prospects": prospects},
+            start_to_close_timeout=timedelta(minutes=1),
+        )
+
+        return {"prospects_found": len(prospects), "inserted": inserted_count}
 
 
 @workflow.defn

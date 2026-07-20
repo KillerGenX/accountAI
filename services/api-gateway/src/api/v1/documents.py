@@ -232,7 +232,7 @@ async def list_documents(
         query = query.where(AccountDocumentModel.account_id == account_id)
     else:
         query = query.where(AccountDocumentModel.account_id.is_(None))
-        
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -354,7 +354,7 @@ async def rag_query(
                 AccountEmbeddingModel.workspace_id == workspace_id,
                 or_(
                     AccountEmbeddingModel.account_id == req.account_id,
-                    AccountEmbeddingModel.account_id.is_(None)
+                    AccountEmbeddingModel.account_id.is_(None),
                 ),
                 AccountEmbeddingModel.content_type.in_(["document", "note"]),
             )

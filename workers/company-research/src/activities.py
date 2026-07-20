@@ -45,6 +45,128 @@ async def query_tavily_search(company_name: str, api_key: str) -> str:
             return "\n\n".join(snippets)
     except Exception as e:
         activity.logger.error(f"Tavily search API query failed: {e}")
+        return ""
+
+
+async def query_google_search(company_name: str, api_key: str, cse_id: str) -> str:
+    """
+    Queries Google Custom Search API.
+    """
+    import asyncio
+    from googleapiclient.discovery import build
+
+    query = f"{company_name} business profile industry news tech stack"
+    try:
+
+        def do_search():
+            service = build(
+                "customsearch", "v1", developerKey=api_key, cache_discovery=False
+            )
+            res = service.cse().list(q=query, cx=cse_id, num=4).execute()
+            return res.get("items", [])
+
+        results = await asyncio.to_thread(do_search)
+        snippets = []
+        for r in results:
+            snippets.append(
+                f"Title: {r.get('title')}\nContent: {r.get('snippet')}\nLink: {r.get('link')}"
+            )
+
+        return "\n\n".join(snippets)
+    except Exception as e:
+        activity.logger.error(f"Google search API failed: {e}")
+        return ""
+
+
+async def query_firecrawl_search(company_name: str, api_key: str) -> str:
+    """
+    Queries Firecrawl API.
+    """
+    import asyncio
+    from firecrawl import FirecrawlApp
+
+    query = f"{company_name} business profile industry news tech stack"
+    try:
+
+        def do_search():
+            app = FirecrawlApp(api_key=api_key)
+            return app.search(query)
+
+        results = await asyncio.to_thread(do_search)
+        snippets = []
+
+        items = results.get("data", []) if isinstance(results, dict) else results
+
+        for r in items:
+            if isinstance(r, dict):
+                snippets.append(
+                    f"Title: {r.get('title')}\nContent: {r.get('description')}\nLink: {r.get('url')}"
+                )
+
+        return "\n\n".join(snippets)
+    except Exception as e:
+        activity.logger.error(f"Firecrawl search API failed: {e}")
+        return ""
+
+
+async def gather_search_context(company_name: str) -> str:
+    """
+    Aggregates search results from Tavily, Google, and Firecrawl.
+    Falls back to DuckDuckGo or Mock if everything fails.
+    """
+    import asyncio
+
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    google_key = os.getenv("GOOGLE_API_KEY")
+    google_cse = os.getenv("GOOGLE_CSE_ID")
+    firecrawl_key = os.getenv("FIRECRAWL_API_KEY")
+
+    tasks = []
+
+    if tavily_key and len(tavily_key) > 10 and "..." not in tavily_key:
+        tasks.append(query_tavily_search(company_name, tavily_key))
+
+    if google_key and google_cse and len(google_key) > 10:
+        tasks.append(query_google_search(company_name, google_key, google_cse))
+
+    if firecrawl_key and len(firecrawl_key) > 10 and "..." not in firecrawl_key:
+        tasks.append(query_firecrawl_search(company_name, firecrawl_key))
+
+    if tasks:
+        results = await asyncio.gather(*tasks)
+        valid_results = [r for r in results if r and r.strip()]
+        if valid_results:
+            return "\n\n--- NEXT SOURCE ---\n\n".join(valid_results)
+
+    # Fallback
+    return await query_duckduckgo_search(company_name)
+
+
+async def query_duckduckgo_search(company_name: str) -> str:
+    """
+    Queries DuckDuckGo for business profile details using asyncio.to_thread to avoid blocking.
+    """
+    import asyncio
+    from duckduckgo_search import DDGS
+
+    query = f"{company_name} business profile industry news tech stack"
+    try:
+
+        def do_search():
+            return DDGS().text(query, max_results=5)
+
+        results = await asyncio.to_thread(do_search)
+        snippets = []
+        for r in results:
+            snippets.append(
+                f"Title: {r.get('title')}\nContent: {r.get('body')}\nLink: {r.get('href')}"
+            )
+
+        if not snippets:
+            return generate_mock_search_results(company_name)
+        return "\n\n".join(snippets)
+    except Exception as e:
+        activity.logger.error(f"DuckDuckGo search failed: {e}")
         return generate_mock_search_results(company_name)
 
 
@@ -59,11 +181,8 @@ async def research_company_profile(company_name: str) -> str:
     llm_provider = os.getenv("RESEARCH_LLM_PROVIDER", "vertex_ai").lower()
     llm_model = os.getenv("RESEARCH_LLM_MODEL", "vertex_ai/gemini-2.5-flash")
 
-    # 1. Fetch web search results
-    if tavily_key and not tavily_key.startswith("tvly-..."):
-        search_context = await query_tavily_search(company_name, tavily_key)
-    else:
-        search_context = generate_mock_search_results(company_name)
+    # 1. Fetch web search results using multi-source aggregation
+    search_context = await gather_search_context(company_name)
 
     # 2. Map GCP variables for LiteLLM if using Vertex AI
     if llm_provider == "vertex_ai":
@@ -238,11 +357,8 @@ async def detect_buying_signals(company_name: str) -> list[dict]:
     llm_provider = os.getenv("RESEARCH_LLM_PROVIDER", "vertex_ai").lower()
     llm_model = os.getenv("RESEARCH_LLM_MODEL", "vertex_ai/gemini-2.5-flash")
 
-    # 1. Fetch web search results
-    if tavily_key and not tavily_key.startswith("tvly-..."):
-        search_context = await query_tavily_search(company_name, tavily_key)
-    else:
-        search_context = generate_mock_search_results(company_name)
+    # 1. Fetch web search results using multi-source aggregation
+    search_context = await gather_search_context(company_name)
 
     # 2. Map GCP variables for LiteLLM if using Vertex AI
     if llm_provider == "vertex_ai":
@@ -376,10 +492,10 @@ async def save_buying_signals_to_db(data: dict) -> bool:
                 # Insert embedding
                 cur.execute(
                     """
-                    INSERT INTO account_embeddings (id, account_id, content_type, embedding, source_record_id, created_at)
-                    VALUES (gen_random_uuid(), %s, 'news', %s, %s, NOW());
+                    INSERT INTO account_embeddings (id, workspace_id, account_id, content_type, embedding, source_record_id, created_at)
+                    VALUES (gen_random_uuid(), %s, %s, 'news', %s, %s, NOW());
                     """,
-                    (account_id, vector_str, news_id),
+                    (workspace_id, account_id, vector_str, news_id),
                 )
             except Exception as emb_err:
                 activity.logger.error(
@@ -449,4 +565,143 @@ async def get_active_accounts_from_db() -> list[dict]:
         return accounts
     except Exception as e:
         activity.logger.error(f"Failed to fetch active accounts: {e}")
+        raise e
+
+
+@activity.defn
+async def search_for_prospects(data: dict) -> list[dict]:
+    """
+    Translates user criteria to search query, searches web, and extracts matching companies.
+    """
+    workspace_id = data.get("workspace_id")
+    criteria = data.get("criteria")
+
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    firecrawl_key = os.getenv("FIRECRAWL_API_KEY")
+    llm_model = os.getenv("RESEARCH_LLM_MODEL", "vertex_ai/gemini-2.5-flash")
+
+    activity.logger.info(f"Searching prospects for criteria: {criteria}")
+
+    # 1. Fetch existing accounts to exclude
+    db_url = os.getenv("DATABASE_URL")
+    existing_companies = []
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT company_name FROM accounts WHERE workspace_id = %s AND deleted_at IS NULL",
+            (workspace_id,),
+        )
+        existing_companies = [row[0] for row in cur.fetchall()]
+        cur.close()
+        conn.close()
+    except Exception as e:
+        activity.logger.warning(f"Could not fetch existing accounts: {e}")
+
+    exclusion_text = ""
+    if existing_companies:
+        exclusion_text = f"DO NOT include these existing companies in the results: {', '.join(existing_companies)}."
+
+    # 2. Convert criteria to search queries (simplified for now, we just search the criteria directly)
+    search_query = f"{criteria} list of companies"
+
+    import asyncio
+
+    tasks = []
+
+    if tavily_key and len(tavily_key) > 10 and "..." not in tavily_key:
+        tasks.append(query_tavily_search(search_query, tavily_key))
+
+    if firecrawl_key and len(firecrawl_key) > 10 and "..." not in firecrawl_key:
+        tasks.append(query_firecrawl_search(search_query, firecrawl_key))
+
+    if tasks:
+        results = await asyncio.gather(*tasks)
+        valid_results = [r for r in results if r and r.strip()]
+        search_context = "\n\n--- NEXT SOURCE ---\n\n".join(valid_results)
+    else:
+        search_context = await query_duckduckgo_search(search_query)
+
+    if not search_context.strip():
+        return []
+
+    # 3. Extract prospects via LLM
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a sales prospect researcher. Your job is to read the search context and extract a list of companies "
+                    f"that perfectly match the user's criteria: '{criteria}'.\n"
+                    f"{exclusion_text}\n"
+                    "You must return ONLY a JSON array of objects. Each object must have:\n"
+                    "1. 'company_name': The name of the company.\n"
+                    "2. 'description': Short summary of what they do.\n"
+                    "3. 'match_reason': 1 sentence on why they match the criteria.\n"
+                    "4. 'source_url': The link where you found them.\n"
+                    "If none found, return []."
+                ),
+            },
+            {"role": "user", "content": f"Search Context:\n{search_context}"},
+        ]
+
+        response = await litellm.acompletion(
+            model=llm_model, messages=messages, timeout=30.0
+        )
+        text_response = response.choices[0].message.content.strip()
+        prospects = parse_json_array(text_response)
+
+        return prospects
+    except Exception as e:
+        activity.logger.error(f"Prospect extraction failed: {e}")
+        return []
+
+
+@activity.defn
+async def save_prospects_to_db(data: dict) -> int:
+    """
+    Saves a list of extracted prospects to the prospects table.
+    """
+    workspace_id = data.get("workspace_id")
+    prospects = data.get("prospects", [])
+
+    if not prospects:
+        return 0
+
+    db_url = os.getenv("DATABASE_URL")
+    inserted = 0
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+
+        for p in prospects:
+            # check if exists
+            cur.execute(
+                "SELECT id FROM prospects WHERE workspace_id = %s AND company_name = %s",
+                (workspace_id, p["company_name"]),
+            )
+            if cur.fetchone():
+                continue
+
+            cur.execute(
+                """
+                INSERT INTO prospects (workspace_id, company_name, description, match_reason, source_url)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    workspace_id,
+                    p["company_name"],
+                    p.get("description", ""),
+                    p.get("match_reason", ""),
+                    p.get("source_url", ""),
+                ),
+            )
+            inserted += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return inserted
+    except Exception as e:
+        activity.logger.error(f"Failed to save prospects: {e}")
         raise e

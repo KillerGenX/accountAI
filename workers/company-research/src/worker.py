@@ -28,6 +28,7 @@ logger = structlog.get_logger()
 from src.workflows import (
     CompanyResearchWorkflow,
     DailyAccountMonitoringWorkflow,
+    ProspectingWorkflow,
 )
 from src.activities import (
     research_company_profile,
@@ -35,6 +36,8 @@ from src.activities import (
     detect_buying_signals,
     save_buying_signals_to_db,
     get_active_accounts_from_db,
+    search_for_prospects,
+    save_prospects_to_db,
 )  # noqa: E402
 
 # Global Temporal client
@@ -98,6 +101,33 @@ async def handle_monitoring_event(msg):
         )
 
 
+async def handle_prospecting_event(msg):
+    """
+    NATS callback triggered when a 'prospecting.requested' event is published.
+    """
+    subject = msg.subject
+    data = json.loads(msg.data.decode("utf-8"))
+    await logger.ainfo("nats_prospecting_event_received", subject=subject, payload=data)
+
+    workspace_id = data.get("workspace_id")
+    if not workspace_id:
+        return
+
+    try:
+        import uuid
+
+        run_id = f"prospecting-{workspace_id}-{uuid.uuid4().hex[:6]}"
+        await temporal_client.start_workflow(
+            ProspectingWorkflow.run,
+            data,
+            id=run_id,
+            task_queue="company-research-tasks",
+        )
+        await logger.ainfo("temporal_prospecting_workflow_started", run_id=run_id)
+    except Exception as e:
+        await logger.aerror("failed_to_start_prospecting_workflow", error=str(e))
+
+
 async def main():
     global temporal_client
 
@@ -113,19 +143,26 @@ async def main():
     nc = await nats.connect(nats_url)
     await nc.subscribe("account.created", cb=handle_nats_event)
     await nc.subscribe("account.monitoring_requested", cb=handle_monitoring_event)
+    await nc.subscribe("prospecting.requested", cb=handle_prospecting_event)
     await logger.ainfo("nats_subscribed_to_subjects")
 
     # 3. Start Temporal Worker to process activities and workflows
     worker = Worker(
         temporal_client,
         task_queue="company-research-tasks",
-        workflows=[CompanyResearchWorkflow, DailyAccountMonitoringWorkflow],
+        workflows=[
+            CompanyResearchWorkflow,
+            DailyAccountMonitoringWorkflow,
+            ProspectingWorkflow,
+        ],
         activities=[
             research_company_profile,
             update_account_in_db,
             detect_buying_signals,
             save_buying_signals_to_db,
             get_active_accounts_from_db,
+            search_for_prospects,
+            save_prospects_to_db,
         ],
     )
 

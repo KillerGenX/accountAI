@@ -48,8 +48,8 @@ export default function Sidebar() {
 
   const menuItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Prospecting", href: "/discovery", icon: Globe },
     { name: "Accounts", href: "/accounts", icon: Building2 },
-    { name: "Knowledge Hub", href: "/knowledge", icon: Globe },
     { name: "Workforce", href: "/monitoring", icon: Cpu },
     { name: "Settings", href: "/settings", icon: Settings },
   ];

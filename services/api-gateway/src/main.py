@@ -28,6 +28,7 @@ from src.core.nats_client import nats_client  # noqa: E402
 from src.api.v1.workspaces import router as workspaces_router  # noqa: E402
 from src.api.v1.accounts import router as accounts_router  # noqa: E402
 from src.api.v1.search import router as search_router  # noqa: E402
+from src.domains.discovery.router import router as discovery_router  # noqa: E402
 from src.api.v1.monitoring import router as monitoring_router  # noqa: E402
 from src.api.v1.news import router as news_router  # noqa: E402
 from src.api.v1.documents import router as documents_router  # noqa: E402
@@ -63,6 +64,7 @@ async def shutdown_event():
 app.include_router(workspaces_router, prefix="/api/v1/workspaces")
 app.include_router(accounts_router, prefix="/api/v1/accounts")
 app.include_router(search_router, prefix="/api/v1/search")
+app.include_router(discovery_router, prefix="/api/v1")
 app.include_router(monitoring_router, prefix="/api/v1/monitoring")
 app.include_router(news_router, prefix="/api/v1/news")
 app.include_router(documents_router, prefix="/api/v1/documents")
@@ -93,13 +95,13 @@ async def health_check():
     nats_connected = False
     if nats_client.nc and nats_client.nc.is_connected:
         nats_connected = True
-        
+
     return {
         "status": "healthy",
         "environment": os.getenv("ENVIRONMENT", "development"),
         "supabase_connected": supabase_connected,
         "nats_connected": nats_connected,
-        "temporal_connected": True, # Temporal worker manages itself, assuming true if API is up
+        "temporal_connected": True,  # Temporal worker manages itself, assuming true if API is up
     }
 
 

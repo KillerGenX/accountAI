@@ -52,7 +52,7 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-slate-500">
-              Perusahaan: <strong className="text-slate-800 font-bold">{dbUser?.email ? displayName.split("@")[0].toUpperCase() : "ES Indonesia"}</strong>
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
           </div>
 
