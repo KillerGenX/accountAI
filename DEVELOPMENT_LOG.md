@@ -6,11 +6,23 @@ This document tracks all completed features, configuration updates, and verifica
 
 ## 🎯 Current Focus & Work in Progress
 
-- **Current Milestone:** Phase 13 - Analytics & Reporting Layer (Dashboard Reports)
+- **Current Milestone:** Phase 14 - Analytics & Reporting Layer (Dashboard Reports)
 - **Objective:** Design and implement global analytics charts, reporting export widgets, and visual trend metrics for AM workspace.
 - **Active Files:**
   - `apps/web/src/app/page.tsx`
-- **Last Action Completed:** Fully completed PDF uploading, parsing, chunking, and semantic Vertex AI / pgvector RAG chatbot interface inside Next.js details workspace for Phase 12.
+- **Last Action Completed:** Fully completed Supabase Auth cloud registration flow, workspace requests database triggers, route guarding, and removed hardcoded mock token headers for Phase 13.
+
+---
+
+## 📅 [2026-07-20] - Phase 13: Real Auth Flow & Workspace Request System (100% Completed)
+
+### 📦 1. Completed Tasks (Supabase Auth Cloud Integration & Request System)
+- **Workspace Access Request:** Created `workspace_requests` table and FastAPI `/request-access` endpoints.
+- **Database Trigger Functions:** Configured PostgreSQL `handle_workspace_approval()` to automatically provision active workspaces, seed default AI configs, and set up pending administrators.
+- **Supabase Auth & Invitation Claim:** Implemented `verify-invite` and `claim-invite` sync flows mapping real Supabase Auth UUID to local DB profiles.
+- **Branding Update:** Rebranded auth pages (`/login`, `/register`, `/request-access`) from placeholder "Project Brain" to `AccountAI`.
+- **Mock Token Refactoring:** Stripped hardcoded `mock-token-teguh` authorization headers across the frontend dashboard, accounts, and detail routing files, routing authentications through `fetchWithAuth`.
+- **Testing Utility Scripts:** Authored `scripts/truncate_db.py` for database resets and `scripts/approve_request.py` for CLI-level access request approvals.
 
 ---
 

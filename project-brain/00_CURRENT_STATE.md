@@ -32,6 +32,7 @@ ai_required: true
 | Phase 10 | Buying Signal Employee + News Worker | ✅ COMPLETE | 2026-07-18 |
 | Phase 11 | Digital Workforce Console UI (Accept/Reject) | ✅ COMPLETE | 2026-07-18 |
 | Phase 12 | Knowledge Hub Layer 2 (PDF Upload + RAG) | ✅ COMPLETE | 2026-07-18 |
+| Phase 13 | Real Auth Flow & Workspace Request System | ✅ COMPLETE | 2026-07-20 |
 
 ---
 
@@ -283,10 +284,9 @@ The default workspace ID hardcoded in the frontend:
 These are gaps vs the MVP scope defined in `35_MVP.md`:
 
 | Gap | Priority | Phase | Impact |
-|---|---|---|---|
+|---|---|---|
 | **Account Scoring Employee** (AI 0-100 scoring) | 🟡 Medium | Phase 11 | No prioritization for which accounts to target |
 | **Search UI in frontend** | 🟡 Medium | Phase 10 | Semantic search API works but no search bar in UI |
-| **Real Auth flow** (Supabase Auth UI / login page) | 🟡 Medium | Phase 13 | Frontend still uses hardcoded mock token |
 
 ---
 
@@ -297,7 +297,7 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 | `gemini-1.5-flash` disabled in this GCP project | Use `vertex_ai/gemini-2.5-flash` (already set as default) |
 | Google Vertex AI `text-embedding-004` returns 768 dims | Zero-padded to 1536 in `embeddings.py`. Do NOT change schema. |
 | NATS connection fails if Docker Compose not running | Run `docker-compose up -d` first before starting any service |
-| Frontend uses hardcoded `mock-token-teguh` | For real auth, user must be in `users` table with matching Supabase UUID |
+| Frontend Auth Integration | Supabase Auth Cloud is fully integrated. `mock-token-teguh` is only used as a dev fallback. |
 | `research-worker/` directory in workers/ is empty | Ignore this folder — it's an artifact, use `company-research/` only |
 
 ---
@@ -343,3 +343,9 @@ These are gaps vs the MVP scope defined in `35_MVP.md`:
 | PDF Document Parser | `test_rag_local.py` text extraction & chunking | ✅ PASS |
 | Knowledge Hub UI | PDF drag-and-drop & list documents table | ✅ PASS |
 | AI RAG Assistant Chat | Gemini 2.5 Flash query synthesis with sources | ✅ PASS |
+| Workspace Request API | POST `/request-access` submits correctly | ✅ PASS |
+| PostgreSQL Trigger | Automatically creates workspace & configs on request approval | ✅ PASS |
+| Supabase Auth Sync | Invitation verify & Claim invite binds to Supabase UUID | ✅ PASS |
+| Frontend Auth Guards | Redirects unauthenticated users to `/login` dynamically | ✅ PASS |
+| DB Truncate Script | Safely resets database tables for E2E testing | ✅ PASS |
+| Request Approve Script | CLI tool to bypass chicken-and-egg database bootstrap | ✅ PASS |
