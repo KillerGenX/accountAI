@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-import uuid
-import json
 
 from src.core.database import get_db
 from src.core.nats_client import nats_client
@@ -44,7 +42,7 @@ async def get_prospects(workspace_id: str, db: AsyncSession = Depends(get_db)):
         .where(
             Prospect.workspace_id == workspace_id,
             Prospect.status == "pending",
-            Prospect.deleted_at == None,
+            Prospect.deleted_at.is_(None),
         )
         .order_by(Prospect.created_at.desc())
     )
@@ -65,7 +63,7 @@ async def approve_prospect(
     stmt = select(Prospect).where(
         Prospect.id == prospect_id,
         Prospect.workspace_id == req.workspace_id,
-        Prospect.deleted_at == None,
+        Prospect.deleted_at.is_(None),
     )
     result = await db.execute(stmt)
     prospect = result.scalar_one_or_none()
@@ -98,7 +96,7 @@ async def reject_prospect(
     stmt = select(Prospect).where(
         Prospect.id == prospect_id,
         Prospect.workspace_id == req.workspace_id,
-        Prospect.deleted_at == None,
+        Prospect.deleted_at.is_(None),
     )
     result = await db.execute(stmt)
     prospect = result.scalar_one_or_none()

@@ -177,7 +177,6 @@ async def research_company_profile(company_name: str) -> str:
     """
     activity.logger.info(f"Researching company profile for: {company_name}")
 
-    tavily_key = os.getenv("TAVILY_API_KEY")
     llm_provider = os.getenv("RESEARCH_LLM_PROVIDER", "vertex_ai").lower()
     llm_model = os.getenv("RESEARCH_LLM_MODEL", "vertex_ai/gemini-2.5-flash")
 
@@ -353,7 +352,6 @@ async def detect_buying_signals(company_name: str) -> list[dict]:
     """
     activity.logger.info(f"Detecting buying signals for: {company_name}")
 
-    tavily_key = os.getenv("TAVILY_API_KEY")
     llm_provider = os.getenv("RESEARCH_LLM_PROVIDER", "vertex_ai").lower()
     llm_model = os.getenv("RESEARCH_LLM_MODEL", "vertex_ai/gemini-2.5-flash")
 
