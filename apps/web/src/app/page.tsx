@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "../context/AuthContext";
 import { 
   Building2, 
   Percent, 
@@ -30,27 +31,26 @@ interface Workspace {
 const DEFAULT_WORKSPACE_ID = "348ea7c6-11f3-4589-9518-e567c0958b7f";
 
 export default function Dashboard() {
+  const { fetchWithAuth, dbUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const activeWorkspaceId = dbUser?.workspace_id || DEFAULT_WORKSPACE_ID;
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
         // 1. Fetch Workspace Profile
-        const wsRes = await fetch(`http://localhost:8000/api/v1/workspaces/${DEFAULT_WORKSPACE_ID}`, {
-          headers: { "Authorization": "Bearer mock-token-teguh" }
-        });
+        const wsRes = await fetchWithAuth(`/api/v1/workspaces/${activeWorkspaceId}`);
         if (!wsRes.ok) throw new Error("API Server is offline or default workspace has not been created.");
         const wsData = await wsRes.json();
         setWorkspace(wsData);
 
         // 2. Fetch Accounts
-        const accRes = await fetch(`http://localhost:8000/api/v1/accounts/`, {
-          headers: { "Authorization": "Bearer mock-token-teguh" }
-        });
+        const accRes = await fetchWithAuth(`/api/v1/accounts/`);
         if (accRes.ok) {
           const accData = await accRes.json();
           setAccounts(accData);
@@ -65,7 +65,7 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, []);
+  }, [activeWorkspaceId]);
 
   // Compute aggregated stats
   const totalAccounts = accounts.length;

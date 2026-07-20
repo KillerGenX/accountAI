@@ -74,3 +74,44 @@ class EmployeeConfigResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WorkspaceRequestCreate(BaseModel):
+    email: EmailStr = Field(..., description="Business email of the requester")
+    full_name: str = Field(
+        ..., min_length=1, max_length=100, description="Name of requester"
+    )
+    company_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Company/Workspace name requested",
+    )
+    industry: Optional[str] = Field(None, max_length=100, description="Industry sector")
+    reason: Optional[str] = Field(None, description="Reason for requesting access")
+
+
+class WorkspaceRequestResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    full_name: str
+    company_name: str
+    industry: Optional[str]
+    reason: Optional[str]
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InviteVerificationResponse(BaseModel):
+    is_valid: bool
+    email: str
+    full_name: Optional[str] = None
+    company_name: Optional[str] = None
+
+
+class ClaimInviteRequest(BaseModel):
+    email: EmailStr
+    supabase_user_id: UUID
+    full_name: str

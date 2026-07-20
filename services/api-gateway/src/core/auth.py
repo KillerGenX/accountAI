@@ -142,6 +142,15 @@ async def get_current_user(
         "email": db_user.email,
         "role": db_user.role,
         "full_name": db_user.full_name,
+        "status": db_user.status,
+        "invited_by": str(db_user.invited_by) if db_user.invited_by else None,
+        "invited_at": db_user.invited_at.isoformat() if db_user.invited_at else None,
+        "joined_at": db_user.joined_at.isoformat() if db_user.joined_at else None,
+        "last_login_at": (
+            db_user.last_login_at.isoformat() if db_user.last_login_at else None
+        ),
+        "created_at": db_user.created_at.isoformat() if db_user.created_at else None,
+        "updated_at": db_user.updated_at.isoformat() if db_user.updated_at else None,
     }
 
     # 5. Cache the verified profile

@@ -11,12 +11,17 @@ from src.domains.system.models import (
     UserModel,
     UserSettingsModel,
     EmployeeConfigModel,
+    WorkspaceRequestModel,
 )
 from src.domains.system.schemas import (
     WorkspaceCreate,
     WorkspaceResponse,
     UserCreate,
     UserResponse,
+    WorkspaceRequestCreate,
+    WorkspaceRequestResponse,
+    InviteVerificationResponse,
+    ClaimInviteRequest,
 )
 
 logger = structlog.get_logger()
@@ -66,6 +71,157 @@ async def create_workspace(
         "workspace_created_successfully", workspace_id=str(new_workspace.id)
     )
     return new_workspace
+
+
+@router.post(
+    "/request-access",
+    response_model=WorkspaceRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def request_access(
+    req_in: WorkspaceRequestCreate, db: AsyncSession = Depends(get_db)
+):
+    """
+    Submits an external request to join the platform.
+    """
+    await logger.ainfo(
+        "request_access_received", email=req_in.email, company=req_in.company_name
+    )
+
+    # Check if request or user already exists
+    req_exists = await db.execute(
+        select(WorkspaceRequestModel).where(WorkspaceRequestModel.email == req_in.email)
+    )
+    if req_exists.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An access request with this email has already been submitted.",
+        )
+
+    user_exists = await db.execute(
+        select(UserModel).where(UserModel.email == req_in.email)
+    )
+    if user_exists.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A registered user with this email already exists.",
+        )
+
+    new_req = WorkspaceRequestModel(
+        email=req_in.email,
+        full_name=req_in.full_name,
+        company_name=req_in.company_name,
+        industry=req_in.industry,
+        reason=req_in.reason,
+        status="pending",
+    )
+    db.add(new_req)
+    await db.commit()
+    await db.refresh(new_req)
+
+    await logger.ainfo("request_access_saved", id=str(new_req.id))
+    return new_req
+
+
+@router.get("/verify-invite", response_model=InviteVerificationResponse)
+async def verify_invite(email: str, db: AsyncSession = Depends(get_db)):
+    """
+    Checks if a user is invited (status='pending' in local public.users table).
+    """
+    await logger.ainfo("verify_invite_requested", email=email)
+
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == email, UserModel.status == "pending")
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        await logger.awarn("verify_invite_failed", email=email)
+        return InviteVerificationResponse(is_valid=False, email=email)
+
+    # Fetch workspace company name
+    ws_result = await db.execute(
+        select(WorkspaceModel).where(WorkspaceModel.id == user.workspace_id)
+    )
+    workspace = ws_result.scalar_one()
+
+    return InviteVerificationResponse(
+        is_valid=True,
+        email=email,
+        full_name=user.full_name,
+        company_name=workspace.company_name or workspace.name,
+    )
+
+
+@router.post("/claim-invite", response_model=UserResponse)
+async def claim_invite(
+    claim_in: ClaimInviteRequest, db: AsyncSession = Depends(get_db)
+):
+    """
+    Claims an invite, changing status to active and binding it to the real Supabase Auth UUID.
+    """
+    await logger.ainfo(
+        "claim_invite_requested",
+        email=claim_in.email,
+        supabase_id=str(claim_in.supabase_user_id),
+    )
+
+    # 1. Find the pending user
+    result = await db.execute(
+        select(UserModel).where(
+            UserModel.email == claim_in.email, UserModel.status == "pending"
+        )
+    )
+    pending_user = result.scalar_one_or_none()
+
+    if not pending_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending invitation found for this email address.",
+        )
+
+    # 2. Delete the old pending record and insert a new active record with the correct UUID.
+    workspace_id = pending_user.workspace_id
+    role = pending_user.role
+
+    await db.delete(pending_user)
+    await db.flush()
+
+    # 3. Create the new active user
+    active_user = UserModel(
+        id=claim_in.supabase_user_id,
+        workspace_id=workspace_id,
+        email=claim_in.email,
+        full_name=claim_in.full_name,
+        role=role,
+        status="active",
+    )
+    db.add(active_user)
+    await db.flush()
+
+    # 4. Create empty settings profile
+    db.add(
+        UserSettingsModel(
+            user_id=active_user.id,
+            workspace_id=workspace_id,
+            notification_preferences={},
+            display_preferences={},
+        )
+    )
+
+    await db.commit()
+    await db.refresh(active_user)
+
+    await logger.ainfo("invite_claimed_successfully", user_id=str(active_user.id))
+    return active_user
+
+
+@router.get("/users/me", response_model=UserResponse)
+async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
+    """
+    Returns the currently authenticated user's profile metadata.
+    """
+    return current_user
 
 
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)

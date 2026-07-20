@@ -19,7 +19,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../.env"))
 # Import target declarative models metadata
 from src.core.database import Base
 # Import system models
-from src.domains.system.models import WorkspaceModel, UserModel, UserSettingsModel, EmployeeConfigModel
+from src.domains.system.models import WorkspaceModel, UserModel, UserSettingsModel, EmployeeConfigModel, WorkspaceRequestModel
 # Import account models
 from src.domains.account.models import (
     AccountModel,

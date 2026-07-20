@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "../../context/AuthContext";
 import { 
   Building2, 
   Plus, 
@@ -28,6 +29,7 @@ const DEFAULT_WORKSPACE_ID = "348ea7c6-11f3-4589-9518-e567c0958b7f";
 const DEFAULT_USER_ID = "5651b60c-a77f-4037-a190-f9e9a7c6eb02";
 
 export default function AccountsPage() {
+  const { fetchWithAuth, dbUser, user } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -44,9 +46,7 @@ export default function AccountsPage() {
   async function fetchAccounts() {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:8000/api/v1/accounts/`, {
-        headers: { "Authorization": "Bearer mock-token-teguh" }
-      });
+      const res = await fetchWithAuth(`/api/v1/accounts/`);
       if (!res.ok) throw new Error("Could not fetch accounts from API server.");
       const data = await res.json();
       setAccounts(data);
@@ -60,7 +60,7 @@ export default function AccountsPage() {
 
   useEffect(() => {
     fetchAccounts();
-  }, []);
+  }, [dbUser?.workspace_id]);
 
   async function handleAddAccount(e: React.FormEvent) {
     e.preventDefault();
@@ -69,22 +69,18 @@ export default function AccountsPage() {
     try {
       setSubmitting(true);
       const body = {
-        workspace_id: DEFAULT_WORKSPACE_ID,
+        workspace_id: dbUser?.workspace_id || DEFAULT_WORKSPACE_ID,
         company_name: companyName,
         company_url: companyUrl || null,
         industry: industry || null,
         sub_industry: subIndustry || null,
         company_size: "Enterprise",
         headquarters: headquarters || null,
-        assigned_to: DEFAULT_USER_ID
+        assigned_to: dbUser?.id || user?.id || DEFAULT_USER_ID
       };
 
-      const res = await fetch("http://localhost:8000/api/v1/accounts/", {
+      const res = await fetchWithAuth("/api/v1/accounts/", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer mock-token-teguh"
-        },
         body: JSON.stringify(body)
       });
 

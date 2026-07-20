@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import {
   Cpu,
   Inbox,
@@ -38,6 +39,7 @@ interface Toast {
 }
 
 export default function WorkforceConsolePage() {
+  const { fetchWithAuth, dbUser } = useAuth();
   const [signals, setSignals] = useState<NewsSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +53,7 @@ export default function WorkforceConsolePage() {
   const fetchSignals = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:8000/api/v1/news/", {
-        headers: { Authorization: "Bearer mock-token-teguh" }
-      });
+      const res = await fetchWithAuth("/api/v1/news/");
       if (!res.ok) throw new Error("Could not load corporate AI discoveries.");
       const data = await res.json();
       setSignals(data);
@@ -67,7 +67,7 @@ export default function WorkforceConsolePage() {
 
   useEffect(() => {
     fetchSignals();
-  }, []);
+  }, [dbUser?.workspace_id]);
 
   const addToast = (message: string, type: "success" | "error" = "success") => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -80,12 +80,8 @@ export default function WorkforceConsolePage() {
   const handleUpdateStatus = async (id: string, newStatus: "approved" | "rejected") => {
     try {
       setActioningId(id);
-      const res = await fetch(`http://localhost:8000/api/v1/news/${id}/status`, {
+      const res = await fetchWithAuth(`/api/v1/news/${id}/status`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer mock-token-teguh"
-        },
         body: JSON.stringify({ status: newStatus })
       });
 
@@ -114,9 +110,8 @@ export default function WorkforceConsolePage() {
   const handleTriggerScraper = async () => {
     try {
       setTriggeringScraper(true);
-      const res = await fetch("http://localhost:8000/api/v1/monitoring/trigger", {
-        method: "POST",
-        headers: { Authorization: "Bearer mock-token-teguh" }
+      const res = await fetchWithAuth("/api/v1/monitoring/trigger", {
+        method: "POST"
       });
 
       if (!res.ok) throw new Error("Failed to trigger NATS scrapers.");

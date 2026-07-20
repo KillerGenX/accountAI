@@ -169,3 +169,20 @@ class EmployeeConfigModel(Base):
 
     # Relationships
     workspace = relationship("WorkspaceModel", back_populates="employee_configs")
+
+
+class WorkspaceRequestModel(SystemBaseModel):
+    """
+    Table representing external requests to join the platform (Minta Gabung).
+    """
+
+    __tablename__ = "workspace_requests"
+
+    email = Column(String, nullable=False, unique=True, index=True)
+    full_name = Column(String, nullable=False)
+    company_name = Column(String, nullable=False)
+    industry = Column(String, nullable=True)
+    reason = Column(String, nullable=True)
+    status = Column(
+        String, nullable=False, server_default="pending", default="pending"
+    )  # pending, approved, rejected
