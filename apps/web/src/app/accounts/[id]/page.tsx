@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "../../../context/AuthContext";
 import Link from "next/link";
 import { 
   Building2, 
@@ -65,6 +66,9 @@ const DEFAULT_WORKSPACE_ID = "348ea7c6-11f3-4589-9518-e567c0958b7f";
 const DEFAULT_USER_ID = "5651b60c-a77f-4037-a190-f9e9a7c6eb02";
 
 export default function AccountDetailPage() {
+  const { fetchWithAuth, dbUser, user } = useAuth();
+  const fetch = fetchWithAuth;
+
   const params = useParams();
   const router = useRouter();
   const accountId = params.id as string;
@@ -110,35 +114,27 @@ export default function AccountDetailPage() {
     try {
       setLoading(true);
       // 1. Fetch main account profile
-      const accRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}`, {
-        headers: { "Authorization": "Bearer mock-token-teguh" }
-      });
+      const accRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}`);
       if (!accRes.ok) throw new Error("Account not found");
       const accData = await accRes.json();
       setAccount(accData);
 
       // 2. Fetch contacts
-      const contactRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/contacts`, {
-        headers: { "Authorization": "Bearer mock-token-teguh" }
-      });
+      const contactRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/contacts`);
       if (contactRes.ok) {
         const contactData = await contactRes.json();
         setContacts(contactData);
       }
 
       // 3. Fetch notes
-      const notesRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/notes`, {
-        headers: { "Authorization": "Bearer mock-token-teguh" }
-      });
+      const notesRes = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/notes`);
       if (notesRes.ok) {
         const notesData = await notesRes.json();
         setNotes(notesData);
       }
 
       // 4. Fetch documents
-      const docsRes = await fetch(`http://localhost:8000/api/v1/documents/?account_id=${accountId}`, {
-        headers: { "Authorization": "Bearer mock-token-teguh" }
-      });
+      const docsRes = await fetch(`http://localhost:8000/api/v1/documents/?account_id=${accountId}`);
       if (docsRes.ok) {
         const docsData = await docsRes.json();
         setDocuments(docsData);
@@ -165,12 +161,8 @@ export default function AccountDetailPage() {
       setSubmittingNote(true);
       const res = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/notes`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer mock-token-teguh"
-        },
         body: JSON.stringify({
-          user_id: DEFAULT_USER_ID,
+          user_id: dbUser?.id || user?.id || DEFAULT_USER_ID,
           content: newNote
         })
       });
@@ -207,10 +199,6 @@ export default function AccountDetailPage() {
 
       const res = await fetch(`http://localhost:8000/api/v1/accounts/${accountId}/contacts`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer mock-token-teguh"
-        },
         body: JSON.stringify(body)
       });
 
@@ -240,9 +228,7 @@ export default function AccountDetailPage() {
   async function fetchDocuments() {
     try {
       setLoadingDocs(true);
-      const res = await fetch(`http://localhost:8000/api/v1/documents/?account_id=${accountId}`, {
-        headers: { "Authorization": "Bearer mock-token-teguh" }
-      });
+      const res = await fetch(`http://localhost:8000/api/v1/documents/?account_id=${accountId}`);
       if (res.ok) {
         const data = await res.json();
         setDocuments(data);
@@ -262,9 +248,6 @@ export default function AccountDetailPage() {
       formData.append("file", file);
       const res = await fetch(`http://localhost:8000/api/v1/documents/upload?account_id=${accountId}`, {
         method: "POST",
-        headers: {
-          "Authorization": "Bearer mock-token-teguh"
-        },
         body: formData
       });
       if (!res.ok) {
@@ -283,8 +266,7 @@ export default function AccountDetailPage() {
     if (!confirm("Apakah Anda yakin ingin menghapus berkas dokumen ini? Seluruh fragmen embedding teks AI akan dihapus permanen dari Supabase.")) return;
     try {
       const res = await fetch(`http://localhost:8000/api/v1/documents/${docId}`, {
-        method: "DELETE",
-        headers: { "Authorization": "Bearer mock-token-teguh" }
+        method: "DELETE"
       });
       if (res.ok) {
         fetchDocuments();
@@ -308,10 +290,6 @@ export default function AccountDetailPage() {
     try {
       const res = await fetch("http://localhost:8000/api/v1/documents/rag-query", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer mock-token-teguh"
-        },
         body: JSON.stringify({
           account_id: accountId,
           query: userMsg
